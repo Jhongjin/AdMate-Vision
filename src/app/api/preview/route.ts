@@ -31,21 +31,21 @@ async function getBrowser() {
     if (isProduction) {
         console.log('Environment: Production (Vercel/Serverless)');
 
-        // GOLDEN VERSION STRATEGY
-        // Use the bundled binary path from @sparticuz/chromium
+        // Use bundled binary with latest sparticuz logic
+        // No remote URL - rely on package's internal handling
         const execPath = await chromium.executablePath();
         console.log('Executable Path:', execPath);
 
-        // Serverless Args for Stability
+        // Optimized Serverless Args
         const launchOptions = {
             args: [
                 ...chromium.args,
-                '--disable-gpu',
-                '--disable-dev-shm-usage',
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
+                '--single-process',
                 '--no-zygote',
-                '--single-process', // Critical for Serverless stability
+                '--disable-gpu',
+                '--disable-dev-shm-usage',
             ],
             defaultViewport: chromium.defaultViewport,
             executablePath: execPath,
