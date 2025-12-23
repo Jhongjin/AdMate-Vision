@@ -5,7 +5,6 @@ import chromium from '@sparticuz/chromium';
 import https from 'https';
 
 // Configuring Chromium for Serverless
-// This helps avoid font issues and cold start performance
 chromium.setHeadlessMode = true;
 chromium.setGraphicsMode = false;
 
@@ -32,6 +31,9 @@ async function getBrowser() {
     if (isProduction) {
         console.log('Environment: Production (Vercel/Serverless)');
 
+        // Explicitly check executable path
+        const execPath = await chromium.executablePath();
+
         // Serverless Args for Stability
         const launchOptions = {
             args: [
@@ -41,9 +43,10 @@ async function getBrowser() {
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--no-zygote',
+                '--single-process',
             ],
             defaultViewport: chromium.defaultViewport,
-            executablePath: await chromium.executablePath(),
+            executablePath: execPath,
             headless: chromium.headless,
             ignoreHTTPSErrors: true,
         };
@@ -53,15 +56,13 @@ async function getBrowser() {
         // Local Development
         console.log('Environment: Local');
         try {
-            // In local, use full playwright if installed
             const { chromium: localChromium } = require('playwright');
             return localChromium.launch({
                 headless: false,
-                channel: 'chrome' // or defaults
+                channel: 'chrome'
             });
         } catch (e) {
             console.warn('Local playwright not found, attempting core launch...');
-            // Fallback or Error
             return playwright.launch({ headless: false });
         }
     }
@@ -103,7 +104,6 @@ export async function POST(req: Request) {
         await page.mouse.wheel(0, 300);
         await page.waitForTimeout(500);
         await page.evaluate(() => window.scrollTo(0, 0));
-        // Reduced wait time for serverless efficiency, but safe enough for ads
         await page.waitForTimeout(2000);
 
         // 3. Inject
@@ -138,7 +138,6 @@ export async function POST(req: Request) {
                     anchor.appendChild(newImg);
                     el.appendChild(anchor);
 
-                    // Reset container styles to ensure visibility
                     el.style.padding = '0';
                     el.style.margin = '0';
                     el.style.background = 'transparent';
