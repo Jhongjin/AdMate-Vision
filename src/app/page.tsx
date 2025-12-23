@@ -1,13 +1,74 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 export default function Home() {
     const [imageUrl, setImageUrl] = useState('https://via.placeholder.com/750x200?text=AdMate+Vision');
     const [landingUrl, setLandingUrl] = useState('https://admate.co.kr');
     const [resultImage, setResultImage] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false); // New state for upload
     const [error, setError] = useState<string | null>(null);
+    const [dragActive, setDragActive] = useState(false); // Drag state
+
+    // Handle Drag Events
+    const handleDrag = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.type === 'dragenter' || e.type === 'dragover') {
+            setDragActive(true);
+        } else if (e.type === 'dragleave') {
+            setDragActive(false);
+        }
+    }, []);
+
+    // Handle File Drop/Select
+    const handleFile = async (files: FileList | null) => {
+        if (!files || files.length === 0) return;
+
+        const file = files[0];
+        if (!file.type.startsWith('image/')) {
+            setError('Please upload an image file.');
+            return;
+        }
+
+        setUploading(true);
+        setError(null);
+        try {
+            const response = await fetch(`/api/upload?filename=${file.name}`, {
+                method: 'POST',
+                body: file,
+            });
+
+            const newBlob = await response.json();
+            if (newBlob.url) {
+                setImageUrl(newBlob.url);
+            } else {
+                throw new Error('Upload failed');
+            }
+        } catch (err: any) {
+            setError('Image upload failed: ' + err.message);
+        } finally {
+            setUploading(false);
+            setDragActive(false);
+        }
+    };
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragActive(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFile(e.dataTransfer.files);
+        }
+    }, []);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        e.preventDefault();
+        if (e.target.files && e.target.files[0]) {
+            handleFile(e.target.files);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -41,27 +102,79 @@ export default function Home() {
     };
 
     return (
-        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
-            <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>AdMate Vision Generator</h1>
+        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' }}>
+            <h1 style={{ textAlign: 'center', marginBottom: '2rem', color: '#333' }}>AdMate Vision Generator</h1>
 
             <form onSubmit={handleSubmit} style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '1rem',
+                gap: '1.5rem',
                 padding: '2rem',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                border: '1px solid #e1e1e1',
+                borderRadius: '12px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                backgroundColor: '#fff'
             }}>
+                {/* Upload Area */}
                 <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Ad Image URL</label>
-                    <input
-                        type="text"
-                        value={imageUrl}
-                        onChange={(e) => setImageUrl(e.target.value)}
-                        style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                        required
-                    />
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Ad Image</label>
+                    <div
+                        onDragEnter={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDragOver={handleDrag}
+                        onDrop={handleDrop}
+                        style={{
+                            border: dragActive ? '2px dashed #03c75a' : '2px dashed #ccc',
+                            borderRadius: '8px',
+                            padding: '2rem',
+                            textAlign: 'center',
+                            backgroundColor: dragActive ? '#f0fdf4' : '#fafafa',
+                            transition: 'all 0.2s',
+                            position: 'relative'
+                        }}
+                    >
+                        {uploading ? (
+                            <p style={{ color: '#03c75a', fontWeight: 'bold' }}>Image Uploading...</p>
+                        ) : (
+                            <>
+                                <p style={{ margin: 0, color: '#666' }}>Drag & drop an image here, or</p>
+                                <input
+                                    type="file"
+                                    id="file-upload"
+                                    style={{ display: 'none' }}
+                                    onChange={handleChange}
+                                    accept="image/*"
+                                />
+                                <label
+                                    htmlFor="file-upload"
+                                    style={{
+                                        display: 'inline-block',
+                                        marginTop: '0.5rem',
+                                        padding: '0.5rem 1rem',
+                                        backgroundColor: '#fff',
+                                        border: '1px solid #ccc',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '0.9rem'
+                                    }}
+                                >
+                                    Select File
+                                </label>
+                            </>
+                        )}
+                    </div>
+
+                    <div style={{ marginTop: '1rem' }}>
+                        <label style={{ fontSize: '0.9rem', color: '#666' }}>Or paste direct URL:</label>
+                        <input
+                            type="text"
+                            value={imageUrl}
+                            onChange={(e) => setImageUrl(e.target.value)}
+                            style={{ width: '100%', padding: '0.75rem', marginTop: '0.25rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                            placeholder="https://..."
+                            required
+                        />
+                    </div>
                 </div>
 
                 <div>
@@ -77,44 +190,64 @@ export default function Home() {
 
                 <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || uploading}
                     style={{
                         marginTop: '1rem',
                         padding: '1rem',
                         fontSize: '1.1rem',
-                        backgroundColor: loading ? '#ccc' : '#03c75a',
+                        backgroundColor: (loading || uploading) ? '#ccc' : '#03c75a',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '4px',
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                        fontWeight: 'bold'
+                        borderRadius: '8px',
+                        cursor: (loading || uploading) ? 'not-allowed' : 'pointer',
+                        fontWeight: 'bold',
+                        transition: 'background-color 0.2s'
                     }}
                 >
                     {loading ? 'Generating Preview...' : 'Generate Naver Mobile Preview'}
                 </button>
 
                 {error && (
-                    <div style={{ padding: '1rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '4px', marginTop: '1rem' }}>
-                        Error: {error}
+                    <div style={{ padding: '1rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '4px', textAlign: 'center' }}>
+                        {error}
                     </div>
                 )}
             </form>
 
             {resultImage && (
-                <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-                    <h2 style={{ marginBottom: '1rem' }}>Preview Result</h2>
-                    <div style={{ border: '1px solid #ddd', padding: '10px', display: 'inline-block', borderRadius: '8px' }}>
-                        <img
-                            src={resultImage}
-                            alt="Generated Preview"
-                            style={{ maxWidth: '100%', height: 'auto', maxHeight: '80vh', display: 'block' }}
-                        />
+                <div style={{ marginTop: '3rem', textAlign: 'center', animation: 'fadeIn 0.5s' }}>
+                    <h2 style={{ marginBottom: '1.5rem', color: '#333' }}>Preview Result</h2>
+
+                    <div style={{ display: 'inline-block', position: 'relative' }}>
+                        {/* Clickable Wrapper */}
+                        <a href={landingUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'block', cursor: 'pointer' }}>
+                            <div style={{
+                                border: '1px solid #e1e1e1',
+                                padding: '10px',
+                                borderRadius: '16px',
+                                boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                                backgroundColor: '#fff'
+                            }}>
+                                <img
+                                    src={resultImage}
+                                    alt="Generated Preview"
+                                    style={{ maxWidth: '100%', height: 'auto', maxHeight: '80vh', display: 'block', borderRadius: '8px' }}
+                                />
+                            </div>
+                        </a>
+                        <p style={{ marginTop: '1.5rem', color: '#666', fontSize: '0.95rem' }}>
+                            ※ 결과물 이미지를 클릭하면 설정한 랜딩 페이지로 이동합니다
+                        </p>
                     </div>
-                    <p style={{ marginTop: '1rem', color: '#666' }}>
-                        * This is a simulation on iPhone 13 viewport (m.naver.com)
-                    </p>
                 </div>
             )}
+
+            <style jsx global>{`
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
         </div>
     );
 }
