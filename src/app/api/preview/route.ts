@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { NextResponse } from 'next/server';
 import { chromium as playwright } from 'playwright-core';
-import chromium from '@sparticuz/chromium';
+import chromium from '@sparticuz/chromium-min'; // Use min package
 import https from 'https';
 
 // Configuring Chromium for Serverless
@@ -31,21 +31,23 @@ async function getBrowser() {
     if (isProduction) {
         console.log('Environment: Production (Vercel/Serverless)');
 
-        // Use bundled binary with latest sparticuz logic
-        // No remote URL - rely on package's internal handling
-        const execPath = await chromium.executablePath();
-        console.log('Executable Path:', execPath);
+        // NUCLEAR STRATEGY: Lightweight Pkg + Remote Force
+        // Use chromium-min package but force download of the FULL v122 pack
+        const execPath = await chromium.executablePath(
+            'https://github.com/Sparticuz/chromium/releases/download/v122.0.0/chromium-v122.0.0-pack.tar'
+        );
+        console.log('Remote Executable Path resolved (v122):', execPath);
 
-        // Optimized Serverless Args
+        // Serverless Args for Stability
         const launchOptions = {
             args: [
                 ...chromium.args,
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--single-process',
-                '--no-zygote',
                 '--disable-gpu',
                 '--disable-dev-shm-usage',
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--no-zygote',
+                '--single-process',
             ],
             defaultViewport: chromium.defaultViewport,
             executablePath: execPath,
