@@ -3,6 +3,7 @@ const nextConfig = {
     experimental: {
         serverComponentsExternalPackages: ['@sparticuz/chromium'],
     },
+    output: 'standalone',
 };
 
 module.exports = nextConfig;
