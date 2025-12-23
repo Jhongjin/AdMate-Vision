@@ -188,6 +188,24 @@ export async function POST(req: Request) {
             `;
             document.head.appendChild(style);
 
+            // 1. Dynamic Data Calculation
+            const now = new Date();
+            // Convert to KST (UTC+9)
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const kstOffset = 9 * 60 * 60 * 1000;
+            const kstDate = new Date(utc + kstOffset);
+
+            const displayHours = kstDate.getHours();
+            const displayMinutes = kstDate.getMinutes().toString().padStart(2, '0');
+            const timeString = `${displayHours}:${displayMinutes}`;
+
+            // Random Battery
+            const batteryLevel = Math.floor(Math.random() * (95 - 20 + 1)) + 20; // 20 ~ 95
+            const isLowPower = batteryLevel <= 20;
+            const batteryColor = isLowPower ? '#FF3B30' : '#000000'; // Red or Black
+            // Battery Body Width (max 22px) -> Scale it
+            const batteryWidth = Math.max(2, Math.round((batteryLevel / 100) * 22));
+
             // 1. Top Status Bar
             const statusBar = document.createElement('div');
             statusBar.style.cssText = `
@@ -212,7 +230,7 @@ export async function POST(req: Request) {
             statusBar.innerHTML = `
                 <!-- Left: Time + Location -->
                 <div style="display: flex; align-items: center; gap: 4px; width: 80px;">
-                    <span style="font-weight: 600; font-size: 15px; letter-spacing: -0.5px;">11:31</span>
+                    <span style="font-weight: 600; font-size: 15px; letter-spacing: -0.5px;">${timeString}</span>
                     <!-- Location Arrow -->
                     <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
                         <path d="M11.5 0.5L0.5 5L5 6.5L6.5 11L11.5 0.5Z" />
@@ -239,9 +257,9 @@ export async function POST(req: Request) {
                     <div style="position: relative; width: 25px; height: 12px;">
                         <div style="position: absolute; left: 0; top: 0; width: 22px; height: 12px; border: 1px solid #999; border-radius: 3px; box-sizing: border-box; background: rgba(255,255,255,0.4);"></div>
                         <div style="position: absolute; right: 0; top: 3.5px; width: 1.5px; height: 5px; background: #999; border-radius: 0 1px 1px 0;"></div>
-                        <div style="position: absolute; left: 2px; top: 2px; width: 11px; height: 8px; background: black; border-radius: 1px;"></div>
+                        <div style="position: absolute; left: 2px; top: 2px; width: ${batteryWidth}px; height: 8px; background: ${batteryColor}; border-radius: 1px;"></div>
                     </div>
-                     <span style="font-weight: 500; font-size: 11px; margin-left: -2px;">60</span>
+                     <span style="font-weight: 500; font-size: 11px; margin-left: -2px;">${batteryLevel}</span>
                 </div>
             `;
             document.body.appendChild(statusBar);
