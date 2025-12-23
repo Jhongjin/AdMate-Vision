@@ -164,6 +164,37 @@ export async function POST(req: Request) {
 
         // 4. Capture
         await page.waitForTimeout(500);
+
+        // Inject Fake Status Bar
+        await page.evaluate(() => {
+            const statusBar = document.createElement('div');
+            statusBar.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 44px; /* iPhone notch height */
+        background: #ffffff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 16px;
+        box-sizing: border-box;
+        z-index: 99999;
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 14px;
+        color: #000000;
+      `;
+            statusBar.innerHTML = `
+        <div style="font-weight: 600;">9:41</div>
+        <div style="display: flex; gap: 4px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="14" viewBox="0 0 16 14"><path fill="currentColor" d="M12.5,11 L14,11 C14.5522847,11 15,10.5522847 15,10 L15,1 C15,0.44771525 14.5522847,0 14,0 L12.5,0 L12.5,11 Z M10.5,11 L12,11 C12.5522847,11 13,10.5522847 13,10 L13,2 C13,1.44771525 12.5522847,1 12,1 L10.5,1 L10.5,11 Z M8.5,11 L10,11 C10.5522847,11 11,10.5522847 11,10 L11,3 C11,2.44771525 10.5522847,2 10,2 L8.5,2 L8.5,11 Z M6.5,11 L8,11 C8.55228475,11 9,10.5522847 9,10 L9,4 C9,3.44771525 8.55228475,3 8,3 L6.5,3 L6.5,11 Z M4.5,11 L6,11 C6.55228475,11 7,10.5522847 7,10 L7,6 C7,5.44771525 6.55228475,5 6,5 L4.5,5 L4.5,11 Z M2.5,11 L4,11 C4.55228475,11 5,10.5522847 5,10 L5,7 C5,6.44771525 4.55228475,6 4,6 L2.5,6 L2.5,11 Z M0.5,11 L2,11 C2.55228475,11 3,10.5522847 3,10 L3,8 C3,7.44771525 2.55228475,7 2,7 L0.5,7 L0.5,11 Z"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="14" viewBox="0 0 20 14"><path fill="currentColor" d="M17,5 L18,5 C18.5522847,5 19,5.44771525 19,6 L19,8 C19,8.55228475 18.5522847,9 18,9 L17,9 L17,5 Z M1,3 L15,3 C15.5522847,3 16,3.44771525 16,4 L16,10 C16,10.5522847 15.5522847,11 15,11 L1,11 C0.44771525,11 0,10.5522847 0,10 L0,4 C0,3.44771525 0.44771525,3 1,3 Z M2,5 L2,9 L14,9 L14,5 L2,5 Z"/></svg>
+        </div>
+      `;
+            document.body.appendChild(statusBar);
+        });
+
         const screenshotBuffer = await page.screenshot({ fullPage: false });
         const screenshotBase64 = screenshotBuffer.toString('base64');
 

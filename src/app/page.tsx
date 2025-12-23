@@ -220,18 +220,21 @@ export default function Home() {
 
                     <div style={{ display: 'inline-block', position: 'relative' }}>
                         {/* Clickable Wrapper */}
-                        <a href={landingUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'block', cursor: 'pointer' }}>
+                        <a href={landingUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', cursor: 'pointer', textDecoration: 'none' }}>
                             <div style={{
                                 border: '1px solid #e1e1e1',
-                                padding: '10px',
-                                borderRadius: '16px',
+                                padding: '0',
+                                borderRadius: '0',
                                 boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-                                backgroundColor: '#fff'
+                                backgroundColor: '#fff',
+                                display: 'inline-block',
+                                width: 'fit-content',
+                                overflow: 'hidden'
                             }}>
                                 <img
                                     src={resultImage}
                                     alt="Generated Preview"
-                                    style={{ maxWidth: '100%', height: 'auto', maxHeight: '80vh', display: 'block', borderRadius: '8px' }}
+                                    style={{ maxWidth: '100%', height: 'auto', maxHeight: '80vh', display: 'block' }}
                                 />
                             </div>
                         </a>
