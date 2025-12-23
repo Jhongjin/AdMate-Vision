@@ -165,20 +165,21 @@ export async function POST(req: Request) {
         // 4. Capture
         await page.waitForTimeout(500);
 
-        // Inject Fake Status Bar
+        // Inject Fake Status Bar & Home Indicator
         await page.evaluate(() => {
+            // 1. Top Status Bar
             const statusBar = document.createElement('div');
             statusBar.style.cssText = `
                 position: fixed;
                 top: 0;
                 left: 0;
                 width: 100%;
-                height: 47px;
-                background: #f4f7f8; /* Matches Naver main background roughly */
+                height: 50px; /* Slight increase for safe area */
+                background: #f4f7f8;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                padding: 0 26px; /* Precise side padding */
+                padding: 0 26px;
                 box-sizing: border-box;
                 z-index: 99999;
                 font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -188,14 +189,20 @@ export async function POST(req: Request) {
             `;
 
             statusBar.innerHTML = `
-                <!-- Left: Time -->
-                <div style="font-weight: 600; font-size: 15px; letter-spacing: -0.5px; width: 54px; text-align: center;">11:31</div>
+                <!-- Left: Time + Location -->
+                <div style="display: flex; align-items: center; gap: 4px; width: 80px;">
+                    <span style="font-weight: 600; font-size: 15px; letter-spacing: -0.5px;">11:31</span>
+                    <!-- Location Arrow -->
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
+                        <path d="M11.5 0.5L0.5 5L5 6.5L6.5 11L11.5 0.5Z" />
+                    </svg>
+                </div>
                 
-                <!-- Center: Notch Placeholder (Invisible) -->
+                <!-- Center: Notch Placeholder -->
                 <div style="flex: 1;"></div>
 
-                <!-- Right: Status Icons -->
-                <div style="display: flex; gap: 6px; align-items: center;">
+                <!-- Right: Status Icons (Tighter Spacing) -->
+                <div style="display: flex; gap: 5px; align-items: center;">
                     <!-- Cellular Signal -->
                     <svg width="18" height="12" viewBox="0 0 18 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M1 8.5C1 8.22386 1.22386 8 1.5 8H3.5C3.77614 8 4 8.22386 4 8.5V11.5C4 11.7761 3.77614 12 3.5 12H1.5C1.22386 12 1 11.7761 1 11.5V8.5Z" fill="black"/>
@@ -209,46 +216,38 @@ export async function POST(req: Request) {
 
                     <!-- Battery -->
                     <div style="position: relative; width: 25px; height: 12px;">
-                        <!-- Battery Body -->
-                        <div style="
-                            position: absolute;
-                            left: 0;
-                            top: 0;
-                            width: 22px;
-                            height: 12px;
-                            border: 1px solid #999; /* Lighter border usually */
-                            border-radius: 3px;
-                            box-sizing: border-box;
-                            background: rgba(255,255,255,0.4);
-                        "></div>
-                        <!-- Battery Cap -->
-                        <div style="
-                            position: absolute;
-                            right: 0;
-                            top: 3.5px;
-                            width: 1.5px;
-                            height: 5px;
-                            background: #999;
-                            border-radius: 0 1px 1px 0;
-                        "></div>
-                        <!-- Battery Level (60%) -->
-                        <div style="
-                            position: absolute;
-                            left: 2px;
-                            top: 2px;
-                            width: 11px; /* ~50-60% width */
-                            height: 8px;
-                            background: black;
-                            border-radius: 1px;
-                        "></div>
-                        <!-- Text inside battery? or next to it? -->
-                        <!-- Modern iPhones often show number inside OR just icon. User said 'percentage'. -->
+                        <div style="position: absolute; left: 0; top: 0; width: 22px; height: 12px; border: 1px solid #999; border-radius: 3px; box-sizing: border-box; background: rgba(255,255,255,0.4);"></div>
+                        <div style="position: absolute; right: 0; top: 3.5px; width: 1.5px; height: 5px; background: #999; border-radius: 0 1px 1px 0;"></div>
+                        <div style="position: absolute; left: 2px; top: 2px; width: 11px; height: 8px; background: black; border-radius: 1px;"></div>
                     </div>
-                    <!-- Separate Percentage Text -->
                      <span style="font-weight: 500; font-size: 11px; margin-left: -2px;">60</span>
                 </div>
             `;
             document.body.appendChild(statusBar);
+
+            // 2. Bottom Home Indicator
+            const homeBar = document.createElement('div');
+            homeBar.style.cssText = `
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 34px;
+                display: flex;
+                justify-content: center;
+                align-items: center; /* Center Vertically in the 34px area */
+                z-index: 99999;
+                pointer-events: none;
+            `;
+            homeBar.innerHTML = `
+                <div style="
+                    width: 134px;
+                    height: 5px;
+                    background-color: #000000;
+                    border-radius: 100px;
+                "></div>
+            `;
+            document.body.appendChild(homeBar);
         });
 
         const screenshotBuffer = await page.screenshot({ fullPage: false });
