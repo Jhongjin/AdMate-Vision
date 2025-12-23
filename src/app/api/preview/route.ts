@@ -169,29 +169,85 @@ export async function POST(req: Request) {
         await page.evaluate(() => {
             const statusBar = document.createElement('div');
             statusBar.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 44px; /* iPhone notch height */
-        background: #ffffff;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0 16px;
-        box-sizing: border-box;
-        z-index: 99999;
-        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-        font-size: 14px;
-        color: #000000;
-      `;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 47px;
+                background: #f4f7f8; /* Matches Naver main background roughly */
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0 26px; /* Precise side padding */
+                box-sizing: border-box;
+                z-index: 99999;
+                font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                font-size: 15px;
+                color: #000000;
+                pointer-events: none;
+            `;
+
             statusBar.innerHTML = `
-        <div style="font-weight: 600;">9:41</div>
-        <div style="display: flex; gap: 4px;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="14" viewBox="0 0 16 14"><path fill="currentColor" d="M12.5,11 L14,11 C14.5522847,11 15,10.5522847 15,10 L15,1 C15,0.44771525 14.5522847,0 14,0 L12.5,0 L12.5,11 Z M10.5,11 L12,11 C12.5522847,11 13,10.5522847 13,10 L13,2 C13,1.44771525 12.5522847,1 12,1 L10.5,1 L10.5,11 Z M8.5,11 L10,11 C10.5522847,11 11,10.5522847 11,10 L11,3 C11,2.44771525 10.5522847,2 10,2 L8.5,2 L8.5,11 Z M6.5,11 L8,11 C8.55228475,11 9,10.5522847 9,10 L9,4 C9,3.44771525 8.55228475,3 8,3 L6.5,3 L6.5,11 Z M4.5,11 L6,11 C6.55228475,11 7,10.5522847 7,10 L7,6 C7,5.44771525 6.55228475,5 6,5 L4.5,5 L4.5,11 Z M2.5,11 L4,11 C4.55228475,11 5,10.5522847 5,10 L5,7 C5,6.44771525 4.55228475,6 4,6 L2.5,6 L2.5,11 Z M0.5,11 L2,11 C2.55228475,11 3,10.5522847 3,10 L3,8 C3,7.44771525 2.55228475,7 2,7 L0.5,7 L0.5,11 Z"/></svg>
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="14" viewBox="0 0 20 14"><path fill="currentColor" d="M17,5 L18,5 C18.5522847,5 19,5.44771525 19,6 L19,8 C19,8.55228475 18.5522847,9 18,9 L17,9 L17,5 Z M1,3 L15,3 C15.5522847,3 16,3.44771525 16,4 L16,10 C16,10.5522847 15.5522847,11 15,11 L1,11 C0.44771525,11 0,10.5522847 0,10 L0,4 C0,3.44771525 0.44771525,3 1,3 Z M2,5 L2,9 L14,9 L14,5 L2,5 Z"/></svg>
-        </div>
-      `;
+                <!-- Left: Time -->
+                <div style="font-weight: 600; font-size: 15px; letter-spacing: -0.5px; width: 54px; text-align: center;">11:31</div>
+                
+                <!-- Center: Notch Placeholder (Invisible) -->
+                <div style="flex: 1;"></div>
+
+                <!-- Right: Status Icons -->
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <!-- Cellular Signal -->
+                    <svg width="18" height="12" viewBox="0 0 18 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 8.5C1 8.22386 1.22386 8 1.5 8H3.5C3.77614 8 4 8.22386 4 8.5V11.5C4 11.7761 3.77614 12 3.5 12H1.5C1.22386 12 1 11.7761 1 11.5V8.5Z" fill="black"/>
+                        <path d="M5.66663 6C5.66663 5.72386 5.89048 5.5 6.16663 5.5H8.16663C8.44277 5.5 8.66663 5.72386 8.66663 6V11.5C8.66663 11.7761 8.44277 12 8.16663 12H6.16663C5.89048 12 5.66663 11.7761 5.66663 11.5V6Z" fill="black"/>
+                        <path d="M10.3333 3.5C10.3333 3.22386 10.5572 3 10.8333 3H12.8333C13.1095 3 13.3333 3.22386 13.3333 3.5V11.5C13.3333 11.7761 13.1095 12 12.8333 12H10.8333C10.5572 12 10.3333 11.7761 10.3333 11.5V3.5Z" fill="black"/>
+                        <path d="M15 1C15 0.723858 15.2239 0.5 15.5 0.5H17.5C17.7761 0.5 18 0.723858 18 1V11.5C18 11.7761 17.7761 12 17.5 12H15.5C15.2239 12 15 11.7761 15 11.5V1Z" fill="black"/>
+                    </svg>
+
+                    <!-- 5G Text -->
+                    <div style="font-weight: 600; font-size: 11px;">5G</div>
+
+                    <!-- Battery -->
+                    <div style="position: relative; width: 25px; height: 12px;">
+                        <!-- Battery Body -->
+                        <div style="
+                            position: absolute;
+                            left: 0;
+                            top: 0;
+                            width: 22px;
+                            height: 12px;
+                            border: 1px solid #999; /* Lighter border usually */
+                            border-radius: 3px;
+                            box-sizing: border-box;
+                            background: rgba(255,255,255,0.4);
+                        "></div>
+                        <!-- Battery Cap -->
+                        <div style="
+                            position: absolute;
+                            right: 0;
+                            top: 3.5px;
+                            width: 1.5px;
+                            height: 5px;
+                            background: #999;
+                            border-radius: 0 1px 1px 0;
+                        "></div>
+                        <!-- Battery Level (60%) -->
+                        <div style="
+                            position: absolute;
+                            left: 2px;
+                            top: 2px;
+                            width: 11px; /* ~50-60% width */
+                            height: 8px;
+                            background: black;
+                            border-radius: 1px;
+                        "></div>
+                        <!-- Text inside battery? or next to it? -->
+                        <!-- Modern iPhones often show number inside OR just icon. User said 'percentage'. -->
+                    </div>
+                    <!-- Separate Percentage Text -->
+                     <span style="font-weight: 500; font-size: 11px; margin-left: -2px;">60</span>
+                </div>
+            `;
             document.body.appendChild(statusBar);
         });
 
