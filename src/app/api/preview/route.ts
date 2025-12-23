@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { NextResponse } from 'next/server';
 import { chromium as playwright } from 'playwright-core';
-import chromium from '@sparticuz/chromium';
+import chromium from '@sparticuz/chromium-min'; // Use chromium-min for size
 import https from 'https';
 
 // Configuring Chromium for Serverless
@@ -31,14 +31,10 @@ async function getBrowser() {
     if (isProduction) {
         console.log('Environment: Production (Vercel/Serverless)');
 
-        // REMOTE BINARY STRATEGY
-        // Force download from specific release matching package version 119.0.2
-        // This bypasses local file system lookups that might fail on Vercel
-        const execPath = await chromium.executablePath(
-            'https://github.com/Sparticuz/chromium/releases/download/v119.0.2/chromium-v119.0.2-pack.tar'
-        );
-
-        console.log('Remote Executable Path resolved to:', execPath);
+        // Explicitly check executable path (Standard logic, no remote URL forced)
+        // This relies on @sparticuz/chromium-min correctly extracting the binary
+        const execPath = await chromium.executablePath();
+        console.log('Executable Path:', execPath);
 
         // Serverless Args for Stability
         const launchOptions = {
