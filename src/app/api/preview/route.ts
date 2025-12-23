@@ -167,6 +167,27 @@ export async function POST(req: Request) {
 
         // Inject Fake Status Bar & Home Indicator
         await page.evaluate(() => {
+            // 0. Layout Fixes for Overlap
+            document.body.style.transition = 'none';
+            document.body.style.marginTop = '50px'; // Push content down to make room for status bar
+            window.scrollTo(0, 0);
+
+            // Force GNB/Header Visibility
+            const style = document.createElement('style');
+            style.textContent = `
+                header, #header, .header, .MM_SEARCH_HEADER, .gnb_banner {
+                    display: block !important;
+                    opacity: 1 !important;
+                    visibility: visible !important;
+                    transform: none !important;
+                    position: absolute !important; /* Ensure it stays at top of content */
+                    top: 0 !important;
+                    width: 100% !important;
+                    z-index: 1000 !important;
+                }
+            `;
+            document.head.appendChild(style);
+
             // 1. Top Status Bar
             const statusBar = document.createElement('div');
             statusBar.style.cssText = `
