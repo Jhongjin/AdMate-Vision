@@ -31,12 +31,10 @@ async function getBrowser() {
     if (isProduction) {
         console.log('Environment: Production (Vercel/Serverless)');
 
-        // REMOTE BINARY STRATEGY V3
-        // Force specific v122 pack download.
-        const execPath = await chromium.executablePath(
-            'https://github.com/Sparticuz/chromium/releases/download/v122.0.0/chromium-v122.0.0-pack.tar'
-        );
-        console.log('Remote Executable Path resolved (v122):', execPath);
+        // GOLDEN VERSION STRATEGY
+        // Use the bundled binary path from @sparticuz/chromium
+        const execPath = await chromium.executablePath();
+        console.log('Executable Path:', execPath);
 
         // Serverless Args for Stability
         const launchOptions = {
@@ -47,7 +45,7 @@ async function getBrowser() {
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--no-zygote',
-                '--single-process',
+                '--single-process', // Critical for Serverless stability
             ],
             defaultViewport: chromium.defaultViewport,
             executablePath: execPath,

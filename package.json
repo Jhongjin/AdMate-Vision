@@ -10,10 +10,10 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@sparticuz/chromium": "^122.0.0",
+    "@sparticuz/chromium": "^119.0.2",
     "next": "^16.1.1",
     "playwright": "^1.57.0",
-    "playwright-core": "^1.42.1",
+    "playwright-core": "^1.40.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "ts-node": "^10.9.2",
