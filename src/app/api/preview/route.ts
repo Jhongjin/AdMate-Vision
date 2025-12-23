@@ -31,8 +31,14 @@ async function getBrowser() {
     if (isProduction) {
         console.log('Environment: Production (Vercel/Serverless)');
 
-        // Explicitly check executable path
-        const execPath = await chromium.executablePath();
+        // REMOTE BINARY STRATEGY
+        // Force download from specific release matching package version 119.0.2
+        // This bypasses local file system lookups that might fail on Vercel
+        const execPath = await chromium.executablePath(
+            'https://github.com/Sparticuz/chromium/releases/download/v119.0.2/chromium-v119.0.2-pack.tar'
+        );
+
+        console.log('Remote Executable Path resolved to:', execPath);
 
         // Serverless Args for Stability
         const launchOptions = {
