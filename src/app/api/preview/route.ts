@@ -1,12 +1,7 @@
 // @ts-nocheck
 import { NextResponse } from 'next/server';
-import { chromium as playwright } from 'playwright-core';
-import chromium from '@sparticuz/chromium-min'; // Use min package
+import { chromium } from 'playwright-core';
 import https from 'https';
-
-// Configuring Chromium for Serverless
-chromium.setHeadlessMode = true;
-chromium.setGraphicsMode = false;
 
 // Helper: Image to Base64
 function fetchImageToBase64(url: string): Promise<string> {
@@ -24,50 +19,35 @@ function fetchImageToBase64(url: string): Promise<string> {
     });
 }
 
-// Logic to get browser instance
+// Browser Logic - Remote Connection Strategy
 async function getBrowser() {
     const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL;
 
     if (isProduction) {
-        console.log('Environment: Production (Vercel/Serverless)');
+        console.log('Environment: Production (Browserless.io)');
 
-        // NUCLEAR STRATEGY: Lightweight Pkg + Remote Force
-        // Use chromium-min package but force download of the FULL v122 pack
-        const execPath = await chromium.executablePath(
-            'https://github.com/Sparticuz/chromium/releases/download/v122.0.0/chromium-v122.0.0-pack.tar'
-        );
-        console.log('Remote Executable Path resolved (v122):', execPath);
+        const token = process.env.BROWSERLESS_TOKEN || 'YOUR_API_TOKEN_HERE';
+        const endpoint = `wss://chrome.browserless.io?token=${token}`;
 
-        // Serverless Args for Stability
-        const launchOptions = {
-            args: [
-                ...chromium.args,
-                '--disable-gpu',
-                '--disable-dev-shm-usage',
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--no-zygote',
-                '--single-process',
-            ],
-            defaultViewport: chromium.defaultViewport,
-            executablePath: execPath,
-            headless: chromium.headless,
-            ignoreHTTPSErrors: true,
-        };
+        console.log('Connecting to Browserless...');
 
-        return playwright.launch(launchOptions);
+        // Using connectOverCDP as explicitly requested
+        // Note: Standard usage is typically chromium.connect(endpoint), but connectOverCDP allows CDP features.
+        return chromium.connectOverCDP(endpoint);
+
     } else {
         // Local Development
         console.log('Environment: Local');
         try {
-            const { chromium: localChromium } = require('playwright');
+            const { chromium: localChromium } = require('playwright'); // Full package for local
             return localChromium.launch({
                 headless: false,
                 channel: 'chrome'
             });
         } catch (e) {
-            console.warn('Local playwright not found, attempting core launch...');
-            return playwright.launch({ headless: false });
+            // Fallback for playwright-core local (requires chrome installed)
+            // If local chrome path isn't found, this might fail, but acceptable for dev fallback
+            return chromium.launch({ headless: false, channel: 'chrome' });
         }
     }
 }
@@ -90,8 +70,11 @@ export async function POST(req: Request) {
             base64Image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
         }
 
-        // 2. Launch Browser
+        // 2. Launch Browser (Remote or Local)
         const browser = await getBrowser();
+
+        // Connect/Launch returns a browser instance (or CDP session wrapper)
+        // Create Context
         const context = await browser.newContext({
             userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
             viewport: { width: 390, height: 844 }, // iPhone 13

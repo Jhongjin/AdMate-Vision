@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    experimental: {
-        serverComponentsExternalPackages: ['@sparticuz/chromium-min', '@sparticuz/chromium'],
-    },
+    // Browserless does not need external packages config
+    // experimental: { serverComponentsExternalPackages: [] },
     output: 'standalone',
 };
 
