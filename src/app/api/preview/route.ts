@@ -4,6 +4,11 @@ import { chromium as playwright } from 'playwright-core';
 import chromium from '@sparticuz/chromium';
 import https from 'https';
 
+// Configuring Chromium for Serverless
+// This helps avoid font issues and cold start performance
+chromium.setHeadlessMode = true;
+chromium.setGraphicsMode = false;
+
 // Helper: Image to Base64
 function fetchImageToBase64(url: string): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -22,24 +27,43 @@ function fetchImageToBase64(url: string): Promise<string> {
 
 // Logic to get browser instance
 async function getBrowser() {
-    const isLocal = process.env.NODE_ENV === 'development' || !process.env.AWS_REGION;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL;
 
-    if (isLocal) {
-        // Local development: use standard playwright (requires 'npm install playwright' or just pointing to local chrome)
-        // Since we installed playwright-core, we need a local executable path or use 'playwright' package if available.
-        // For this environment, we can try to find Chrome or just use the one we installed via 'npx playwright install' earlier.
-        // Actually, 'playwright-core' doesn't download browsers. We previously ran 'npx playwright install chromium'.
-        // We can point to it or try to require 'playwright' if it is still there (it is in package.json from previous steps).
-        const { chromium: localChromium } = require('playwright');
-        return localChromium.launch({ headless: false });
-    } else {
-        // Production (Vercel/AWS)
-        return playwright.launch({
-            args: chromium.args,
+    if (isProduction) {
+        console.log('Environment: Production (Vercel/Serverless)');
+
+        // Serverless Args for Stability
+        const launchOptions = {
+            args: [
+                ...chromium.args,
+                '--disable-gpu',
+                '--disable-dev-shm-usage',
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--no-zygote',
+            ],
             defaultViewport: chromium.defaultViewport,
             executablePath: await chromium.executablePath(),
             headless: chromium.headless,
-        } as any);
+            ignoreHTTPSErrors: true,
+        };
+
+        return playwright.launch(launchOptions);
+    } else {
+        // Local Development
+        console.log('Environment: Local');
+        try {
+            // In local, use full playwright if installed
+            const { chromium: localChromium } = require('playwright');
+            return localChromium.launch({
+                headless: false,
+                channel: 'chrome' // or defaults
+            });
+        } catch (e) {
+            console.warn('Local playwright not found, attempting core launch...');
+            // Fallback or Error
+            return playwright.launch({ headless: false });
+        }
     }
 }
 
@@ -57,7 +81,7 @@ export async function POST(req: Request) {
             base64Image = await fetchImageToBase64(imageUrl);
             console.log('Image converted to Base64.');
         } catch (e) {
-            console.error('Failed to fetch image, using fallback red pixel.');
+            console.error('Failed to fetch image, using fallback red pixel.', e);
             base64Image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
         }
 
@@ -73,13 +97,14 @@ export async function POST(req: Request) {
         const page = await context.newPage();
 
         console.log('Navigating to m.naver.com...');
-        await page.goto('https://m.naver.com');
+        await page.goto('https://m.naver.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
 
         // Scroll interaction
         await page.mouse.wheel(0, 300);
         await page.waitForTimeout(500);
         await page.evaluate(() => window.scrollTo(0, 0));
-        await page.waitForTimeout(2000); // Wait for ads
+        // Reduced wait time for serverless efficiency, but safe enough for ads
+        await page.waitForTimeout(2000);
 
         // 3. Inject
         let injected = false;
@@ -88,7 +113,7 @@ export async function POST(req: Request) {
         const injectIntoHandle = async (handle: any) => {
             const bbox = await handle.boundingBox();
             if (!bbox) return false;
-            // Check Y range valid for Naver Mobile Top Ad (approx 150-400)
+            // Check Y range valid for Naver Mobile Top Ad
             if (bbox.y > 100 && bbox.y < 500 && bbox.height > 50) {
                 await handle.evaluate((el: HTMLElement, { dataUri, link }: any) => {
                     el.innerHTML = '';
@@ -117,6 +142,7 @@ export async function POST(req: Request) {
                     el.style.padding = '0';
                     el.style.margin = '0';
                     el.style.background = 'transparent';
+                    el.style.border = 'none';
                 }, { dataUri: base64Image, link: landingUrl });
                 return true;
             }
@@ -165,7 +191,7 @@ export async function POST(req: Request) {
         });
 
     } catch (error: any) {
-        console.error(error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('API Error:', error);
+        return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
     }
 }
