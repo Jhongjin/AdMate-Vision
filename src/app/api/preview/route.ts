@@ -74,11 +74,20 @@ export async function POST(req: Request) {
         const PLACEMENT_CONFIG: Record<string, any> = {
             'mobile_main': {
                 url: 'https://m.naver.com',
-                // Updated with more robust "Special DA" fallback selectors
-                selectors: ['#veta_top', '.main_veta', 'div[class*="SpecialDA"]', '.main_ad', '._ad_header', 'div[class*="ad"]'],
+                // 1. Broad Pattern Matching Selectors
+                selectors: [
+                    '#veta_top',
+                    '.main_veta',
+                    'div[class*="SpecialDA"]',
+                    'div[class*="main_ad"]',
+                    'div[id*="ad_"]',
+                    '._ad_header',
+                    'div[class*="ad_area"]'
+                ],
                 fallback: true,
                 ratio: 'contain',
-                waitAfterLoad: 2000 // Specific delay to counter native script overwrites
+                waitAfterLoad: 1000,
+                aggressive: true // New Flag: Trigger repeated injection
             },
             'smart_channel_news': {
                 url: 'https://m.news.naver.com',
@@ -263,94 +272,97 @@ export async function POST(req: Request) {
             injected = true;
         }
 
-        // Helper Injection Function
+        // Helper Injection Function (Enhanced with !important styles)
         const injectIntoHandle = async (handle: any) => {
             if (!handle) return false;
             try {
                 const bbox = await handle.boundingBox();
-                // Critical Fix: bbox can be null if element is detached or hidden
                 if (!bbox) return false;
 
-                // Check Y range - Relaxed for sub-pages?
                 const minY = config.minY !== undefined ? config.minY : 0;
-                const maxY = config.maxY !== undefined ? config.maxY : 9999; // Default to open
+                const maxY = config.maxY !== undefined ? config.maxY : 9999;
 
                 if (bbox.y >= minY && bbox.y < maxY && bbox.height > 20) {
                     await handle.evaluate((el: HTMLElement, { dataUri, link, ratio, native }: any) => {
-                        el.innerHTML = '';
-                        // ... internal logic unchanged ...
-                        // Create Anchor Wrapper
+                        el.innerHTML = ''; // Clear container
+
                         const anchor = document.createElement('a');
                         anchor.href = link;
                         anchor.target = '_blank';
-                        anchor.style.display = 'block';
-                        anchor.style.width = '100%';
-                        anchor.style.textDecoration = 'none';
-                        anchor.style.boxSizing = 'border-box';
+                        // Force Styles Level 1
+                        anchor.style.cssText = 'display: block !important; width: 100% !important; text-decoration: none !important; box-sizing: border-box !important; position: relative !important; z-index: 10 !important;';
 
-                        // Create Image
                         const newImg = document.createElement('img');
                         newImg.src = dataUri;
-                        newImg.style.width = '100%';
-                        newImg.style.display = 'block';
-                        newImg.style.objectFit = 'contain';
+                        // Force Styles Level 2 (Image)
+                        newImg.style.cssText = 'width: 100% !important; display: block !important; margin: 0 !important; padding: 0 !important;';
 
                         if (ratio === 'contain') {
-                            newImg.style.height = 'auto';
+                            newImg.style.height = 'auto'; // allow auto height
                         } else {
                             newImg.style.height = '100%';
+                        }
+
+                        if (native) {
+                            newImg.style.borderRadius = '8px';
                         }
 
                         anchor.appendChild(newImg);
                         el.appendChild(anchor);
 
-                        // Reset Container
-                        el.style.padding = '0';
-                        el.style.margin = '0';
-                        el.style.background = 'transparent';
-                        el.style.border = 'none';
+                        // Reset Container Wrapper
+                        el.style.cssText = 'padding: 0 !important; margin: 0 !important; background: transparent !important; border: none !important; height: auto !important; min-height: 50px !important; display: block !important;';
 
-                        if (native) {
-                            el.style.marginBottom = '10px';
-                            el.style.marginTop = '10px';
-                            newImg.style.borderRadius = '8px';
-                            newImg.style.overflow = 'hidden';
-                        } else {
-                            el.style.height = 'auto';
-                            el.style.minHeight = '50px';
-                        }
                     }, { dataUri: base64Image, link: landingUrl, native: config.native, ratio: config.ratio });
                     return true;
                 }
                 return false;
             } catch (e) {
-                console.warn('Error checking bounding box:', e);
                 return false;
             }
         };
 
-        // Execute selectors with robust error handling
-        if (!injected && config.selectors.length > 0) {
-            for (const sel of config.selectors) {
-                if (injected) break;
-                try {
-                    const elements = await page.$$(sel);
-                    for (const el of elements) {
-                        try {
+        // Execute selectors with Aggressive Loop Option
+        const attemptInjection = async () => {
+            let success = false;
+            if (config.selectors.length > 0) {
+                for (const sel of config.selectors) {
+                    if (success) break;
+                    try {
+                        const elements = await page.$$(sel);
+                        for (const el of elements) {
                             if (await injectIntoHandle(el)) {
-                                injected = true;
+                                success = true;
                                 console.log(`Injected into selector: ${sel}`);
                                 break;
                             }
-                        } catch (innerE) {
-                            // Ignore specific element error
                         }
-                    }
-                } catch (e) {
-                    console.warn(`Selector check failed for ${sel}`, e);
+                    } catch (e) { }
                 }
             }
+            return success;
+        };
+
+        // MAIN INJECTION LOGIC -----------------------------------------
+        // 1. First Attempt
+        injected = await attemptInjection();
+
+        // 2. Aggressive Mode: Repeat Injection to defeat overwrites
+        if (config.aggressive) {
+            console.log('Aggressive Mode: Starting repeated injection loop...');
+            // Retry 1
+            await page.waitForTimeout(500);
+            if (await attemptInjection()) console.log('Aggressive Retry 1: Re-injected');
+
+            // Retry 2
+            await page.waitForTimeout(500);
+            if (await attemptInjection()) console.log('Aggressive Retry 2: Re-injected');
+
+            // Retry 3 (Final ensure)
+            await page.waitForTimeout(800);
+            if (await attemptInjection()) console.log('Aggressive Retry 3: Re-injected');
         }
+        // -------------------------------------------------------------
 
         // Fallback Scan (if enabled)
         if (!injected && config.fallback) {
