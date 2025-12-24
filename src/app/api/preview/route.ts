@@ -218,9 +218,10 @@ export async function POST(req: Request) {
             // Else -> CONTINUE
 
             const isExplicitBlock = blockedAds.some(d => url.includes(d));
-            const isPstaticAd = url.includes('ssl.pstatic.net/tveta/libs'); // Ad Libraries specific
+            // User Request: Do NOT block pstatic, ONLY block ad/gfa domains.
+            // const isPstaticAd = url.includes('ssl.pstatic.net/tveta/libs'); 
 
-            if (isExplicitBlock || isPstaticAd) {
+            if (isExplicitBlock) {
                 console.log(`[Shield] Blocked: ${url}`);
                 route.abort();
             } else {
@@ -331,50 +332,110 @@ export async function POST(req: Request) {
 
                 if (bbox.y >= minY && bbox.y < maxY) {
                     await handle.evaluate((el: HTMLElement, { dataUri, link, type, ratio }: any) => {
-                        // --- INLINE STRATEGIES ---
-                        if (type === 'mobile_main') {
-                            // STRATEGY A: GUARDIAN
-                            const existingSafeZone = document.getElementById('admate_acr_safe_zone');
-                            if (existingSafeZone && el.contains(existingSafeZone)) return; // Already done
+                        // Strategy A: Naver Main (ACR + Global Guardian + Visual Discovery)
+                        const injectMobileMain = async (el: HTMLElement, { dataUri, link }: any) => {
+                            // Function to build Safe Zone
+                            const createSafeZone = () => {
+                                const zone = document.createElement('div');
+                                zone.id = 'admate_acr_safe_zone';
+                                zone.style.cssText = `
+                    display: block !important;
+                    width: 100% !important;
+                    height: auto !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    background: #ffffff !important;
+                    position: relative !important;
+                    z-index: 5000 !important;
+                    box-sizing: border-box !important;
+                `;
+                                const a = document.createElement('a');
+                                a.href = link;
+                                a.target = '_blank';
+                                a.style.cssText = 'display: block !important; width: 100% !important; text-decoration: none !important;';
+                                const i = document.createElement('img');
+                                i.src = dataUri;
+                                i.style.cssText = 'width: 100% !important; height: auto !important; display: block !important; object-fit: contain !important;';
+                                a.appendChild(i);
+                                zone.appendChild(a);
+                                return zone;
+                            };
 
-                            el.innerHTML = '';
-                            el.style.cssText = 'display: block !important; height: auto !important; min-height: 50px !important; padding: 0 !important; margin: 0 !important; visibility: visible !important;';
-
-                            const safeZone = document.createElement('div');
-                            safeZone.id = 'admate_acr_safe_zone';
-                            safeZone.style.cssText = 'display: block !important; width: 100% !important; background: #fff !important; z-index: 5000 !important; position: relative !important;';
-
-                            const anchor = document.createElement('a');
-                            anchor.href = link;
-                            anchor.target = '_blank';
-                            anchor.style.cssText = 'display: block !important; width: 100% !important;';
-
-                            const img = document.createElement('img');
-                            img.src = dataUri;
-                            img.style.cssText = 'width: 100% !important; height: auto !important; display: block !important;';
-
-                            anchor.appendChild(img);
-                            safeZone.appendChild(anchor);
-                            el.appendChild(safeZone);
-
-                            // Guardian
-                            if (!(window as any)._admateGuardian) {
-                                console.log('[Guardian] Starting...');
-                                const guardian = new MutationObserver(() => {
-                                    if (!document.getElementById('admate_acr_safe_zone')) {
-                                        el.innerHTML = '';
-                                        el.appendChild(safeZone);
-                                    }
-                                    if (el.children.length > 1) {
-                                        Array.from(el.children).forEach(c => {
-                                            if (c.id !== 'admate_acr_safe_zone') c.remove();
-                                        });
-                                    }
-                                });
-                                guardian.observe(el, { childList: true, subtree: true });
-                                (window as any)._admateGuardian = guardian;
+                            // 1. Initial Injection
+                            if (!document.getElementById('admate_acr_safe_zone')) {
+                                el.innerHTML = '';
+                                el.style.cssText = 'display: block !important; height: auto !important; min-height: 50px !important; visibility: visible !important;';
+                                el.appendChild(createSafeZone());
                             }
 
+                            // 2. PERMANENT GUARDIAN (Global Body Observer)
+                            if (!(window as any)._admateGuardian) {
+                                console.log('[Guardian] Starting Permanent Watchdog...');
+
+                                const guardian = new MutationObserver((mutations) => {
+                                    // A. Check if Safe Zone exists
+                                    const zone = document.getElementById('admate_acr_safe_zone');
+
+                                    if (!zone) {
+                                        console.log('[Guardian] Safe Zone LOST! Initiating Visual Discovery...');
+
+                                        // B. Visual Discovery Logic
+                                        // Naver Main Ad is usually the first big div below the header/gnb.
+                                        // We look for any div that looks like an ad (based on class or position).
+                                        let target = null;
+
+                                        // Priority 1: Known Classes
+                                        const candidates = document.querySelectorAll('#veta_top, .main_veta, div[class*="SpecialDA"], div[class*="main_ad"]');
+                                        if (candidates.length > 0) {
+                                            target = candidates[0];
+                                        }
+
+                                        // Priority 2: Visual Scan (First element with height > 50px below 100px)
+                                        if (!target) {
+                                            const divs = document.querySelectorAll('div');
+                                            for (const d of divs as any) {
+                                                const rect = d.getBoundingClientRect();
+                                                // Heuristic: Top > 100 (below header), Min Height 50, Full Width-ish
+                                                if (rect.top > 80 && rect.top < 500 && rect.height > 50 && rect.width > 300) {
+                                                    // Avoid GNB or News
+                                                    if (d.id === 'header' || d.classList.contains('gnb_banner')) continue;
+                                                    console.log('[Guardian] Visual Candidate Found:', d.className);
+                                                    target = d;
+                                                    break;
+                                                }
+                                            }
+                                        }
+
+                                        if (target) {
+                                            console.log('[Guardian] Re-injecting into target...');
+                                            target.innerHTML = '';
+                                            target.appendChild(createSafeZone());
+                                        }
+                                    }
+
+                                    // C. Anti-Tamper (If Safe Zone exists but siblings are added)
+                                    if (zone && zone.parentElement) {
+                                        const parent = zone.parentElement;
+                                        if (parent.children.length > 1) {
+                                            Array.from(parent.children).forEach(child => {
+                                                if (child.id !== 'admate_acr_safe_zone') {
+                                                    console.log('[Guardian] Removing intruder...');
+                                                    child.remove();
+                                                }
+                                            });
+                                        }
+                                    }
+                                });
+
+                                // Observe BODY to catch entire section replacements
+                                guardian.observe(document.body, { childList: true, subtree: true });
+                                (window as any)._admateGuardian = guardian;
+                            }
+                            return true;
+                        };
+                        // --- INLINE STRATEGIES ---
+                        if (type === 'mobile_main') {
+                            injectMobileMain(el, { dataUri, link });
                         } else if (type === 'gfa_feed') {
                             // STRATEGY B: GFA
                             el.innerHTML = '';
