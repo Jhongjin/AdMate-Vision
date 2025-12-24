@@ -70,6 +70,30 @@ export async function POST(req: Request) {
             base64Image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
         }
 
+        // 0. Define Placement Config Strategy
+        const PLACEMENT_CONFIG: Record<string, any> = {
+            'mobile_main': {
+                url: 'https://m.naver.com',
+                selectors: ['.main_veta', '.id_main_banner', 'div[class*="ad"]', '#veta_top'],
+                fallback: true
+            },
+            'smart_channel_news': {
+                url: 'https://m.news.naver.com',
+                selectors: ['.section_ad', '._ad_header', '.ad_area', 'div[class*="ad"]'], // Dynamic candidates
+                fallback: true,
+                layoutSetup: async (p: any) => {
+                    // News specific layout fix if needed
+                }
+            }
+        };
+
+        const currentPlacement = PLACEMENT_CONFIG[media] || PLACEMENT_CONFIG['mobile_main']; // 'media' reused as placement or add new param
+        // Note: User asked for 'placement' param. Let's use it.
+        const placementParam = (req as any).placement || media || 'mobile_main'; // Backward compat
+        const config = PLACEMENT_CONFIG[placementParam] || PLACEMENT_CONFIG['mobile_main'];
+
+        console.log(`Target Placement: ${placementParam}, URL: ${config.url}`);
+
         // 2. Launch Browser (Remote or Local)
         const browser = await getBrowser();
 
@@ -84,14 +108,14 @@ export async function POST(req: Request) {
         });
         const page = await context.newPage();
 
-        console.log('Navigating to m.naver.com...');
-        await page.goto('https://m.naver.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        console.log(`Navigating to ${config.url}...`);
+        await page.goto(config.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-        // Scroll interaction
+        // Scroll interaction (Universal)
         await page.mouse.wheel(0, 300);
         await page.waitForTimeout(500);
         await page.evaluate(() => window.scrollTo(0, 0));
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(1000);
 
         // 3. Inject
         let injected = false;
@@ -100,8 +124,13 @@ export async function POST(req: Request) {
         const injectIntoHandle = async (handle: any) => {
             const bbox = await handle.boundingBox();
             if (!bbox) return false;
-            // Check Y range valid for Naver Mobile Top Ad
-            if (bbox.y > 100 && bbox.y < 500 && bbox.height > 50) {
+
+            // Check Y range - Relaxed for sub-pages?
+            // Main page ads usually 100-500. Smart Channel might be top (0-200).
+            const minY = 0; // Smart Channel is at very top
+            const maxY = 600;
+
+            if (bbox.y >= minY && bbox.y < maxY && bbox.height > 20) {
                 await handle.evaluate((el: HTMLElement, { dataUri, link }: any) => {
                     el.innerHTML = '';
 
@@ -113,50 +142,60 @@ export async function POST(req: Request) {
                     anchor.style.width = '100%';
                     anchor.style.height = '100%';
                     anchor.style.textDecoration = 'none';
+                    anchor.style.boxSizing = 'border-box';
 
                     // Create Image
                     const newImg = document.createElement('img');
                     newImg.src = dataUri;
                     newImg.style.width = '100%';
-                    newImg.style.height = 'auto';
+                    newImg.style.height = 'auto'; // Default auto
+
+                    // Smart Channel Ratio Support (4.69:1 -> ~750x160)
+                    // If height is constrained, object-fit contain
                     newImg.style.display = 'block';
                     newImg.style.objectFit = 'contain';
 
                     anchor.appendChild(newImg);
                     el.appendChild(anchor);
 
+                    // Reset Container
                     el.style.padding = '0';
                     el.style.margin = '0';
                     el.style.background = 'transparent';
                     el.style.border = 'none';
+                    el.style.height = 'auto'; // allow expansion
+                    el.style.minHeight = '50px';
                 }, { dataUri: base64Image, link: landingUrl });
                 return true;
             }
             return false;
         };
 
-        // Strategies
-        const selectors = ['.main_veta', '.id_main_banner', 'div[class*="ad"]', '#veta_top'];
-        for (const sel of selectors) {
+        // Execute selectors
+        for (const sel of config.selectors) {
             if (injected) break;
             const elements = await page.$$(sel);
             for (const el of elements) {
                 if (await injectIntoHandle(el)) {
                     injected = true;
+                    console.log(`Injected into selector: ${sel}`);
                     break;
                 }
             }
         }
 
-        if (!injected) {
-            // Fallback Div Scan
+        // Fallback Scan (if enabled)
+        if (!injected && config.fallback) {
+            console.log('Using fallback div scan...');
             const divs = await page.$$('div');
             for (const div of divs) {
                 if (injected) break;
                 const bbox = await div.boundingBox();
-                if (bbox && bbox.y > 150 && bbox.y < 450 && bbox.height > 50 && bbox.width > 300) {
+                // Smart Channel is usually wide (300+) and near top
+                if (bbox && bbox.y < 300 && bbox.height > 40 && bbox.width > 300) {
                     if (await injectIntoHandle(div)) {
                         injected = true;
+                        console.log('Injected into fallback div');
                     }
                 }
             }

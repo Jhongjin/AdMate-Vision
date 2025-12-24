@@ -77,13 +77,17 @@ export default function Home() {
         setResultImage(null);
 
         try {
+            // Get form data directly since we used unchecked select
+            const form = e.target as HTMLFormElement;
+            const placement = (form.elements.namedItem('media') as HTMLSelectElement).value;
+
             const res = await fetch('/api/preview', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     imageUrl,
                     landingUrl,
-                    media: 'naver_mobile'
+                    placement // Send selected placement
                 }),
             });
 
@@ -186,6 +190,18 @@ export default function Home() {
                         style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
                         required
                     />
+                </div>
+
+                {/* Placement Select */}
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Placement</label>
+                    <select
+                        name="media"
+                        style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                    >
+                        <option value="mobile_main">네이버 메인 (스페셜 DA)</option>
+                        <option value="smart_channel_news">네이버 뉴스 (스마트 채널)</option>
+                    </select>
                 </div>
 
                 <button

@@ -1,0 +1,351 @@
+{
+  "https://m.news.naver.com": {
+    "error": "TimeoutError: page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://m.news.naver.com/\", waiting until \"networkidle\"\u001b[22m\n"
+  },
+  "https://m.sports.naver.com": [
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "SportsHeader_sports_gnb__WLTfM",
+      "width": 390,
+      "height": 45,
+      "top": 0,
+      "innerText": "NAVER\n스포츠\n뉴스\n엔터\nMY팀\n"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "SportsHeader_service_area__I20bl",
+      "width": 90,
+      "height": 45,
+      "top": 0,
+      "innerText": "뉴스\n엔터"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "SportsHeader_tool_area__DXwkF",
+      "width": 123,
+      "height": 45,
+      "top": 0,
+      "innerText": "MY팀\nNEW\n네이버톡\n메뉴"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "SportsHeader_my_team_wrap__IS9hj",
+      "width": 38,
+      "height": 45,
+      "top": 0,
+      "innerText": "MY팀\nNEW"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "SportsHeader_link_talk_wrap__sZMsE",
+      "width": 38,
+      "height": 45,
+      "top": 0,
+      "innerText": "네이버톡"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "SportsHeader_lnb_inner__S2EFw",
+      "width": 390,
+      "height": 45,
+      "top": 45,
+      "innerText": "홈\n야구\n해외야구\n축구\n해외축구\n농구"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "comp_home_group Home_comp_headline_news__R8AMZ",
+      "width": 390,
+      "height": 469,
+      "top": 443,
+      "innerText": "종합 NOW\n기사엔드 바로가기\n베트남"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "grid1 comp_home_group template_feed_only_ad",
+      "width": 390,
+      "height": 518,
+      "top": 922,
+      "innerText": ""
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_tmplfeedad_template_body_ad",
+      "width": 358,
+      "height": 508,
+      "top": 922,
+      "innerText": ""
+    },
+    {
+      "tagName": "DIV",
+      "id": "mfc_mod_ad_basic_1",
+      "className": "mfc_modadbasic_ad_item",
+      "width": 358,
+      "height": 508,
+      "top": 922,
+      "innerText": ""
+    },
+    {
+      "tagName": "IFRAME",
+      "id": "mfc_mod_ad_basic_1_tgtLREC",
+      "className": "",
+      "width": 358,
+      "height": 476,
+      "top": 938,
+      "innerText": ""
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_tmplcommonbest_template_header",
+      "width": 358,
+      "height": 52,
+      "top": 1440,
+      "innerText": "많이 본 종합 뉴스"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_modheadertitle_header",
+      "width": 358,
+      "height": 24,
+      "top": 1456,
+      "innerText": "많이 본 종합 뉴스"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_modheadertitle_header_left",
+      "width": 358,
+      "height": 24,
+      "top": 1456,
+      "innerText": "많이 본 종합 뉴스"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_tmplfeedmixed_template_header",
+      "width": 358,
+      "height": 52,
+      "top": 2347,
+      "innerText": "한 눈에 보는 종합 소식\n도움말"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_modheadertitle_header",
+      "width": 358,
+      "height": 24,
+      "top": 2363,
+      "innerText": "한 눈에 보는 종합 소식\n도움말"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_modheadertitle_header_left",
+      "width": 358,
+      "height": 24,
+      "top": 2363,
+      "innerText": "한 눈에 보는 종합 소식\n도움말"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_elemimagerectangle_image mfc_elemimagerectangle_type_ratio_3_4_5 type_image mfc_elemimagerectangle_type_8 mfc_elemimagerectangle_type_shadowDown",
+      "width": 358,
+      "height": 537,
+      "top": 2399,
+      "innerText": ""
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_elemimagerectangle_image mfc_elemimagerectangle_type_ratio_nofix type_image mfc_elemimagerectangle_type_8 mfc_elemimagerectangle_type_shadowDown",
+      "width": 175,
+      "height": 261,
+      "top": 2944,
+      "innerText": ""
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_tmplfeedmixed_template_body_ad template_body_ad",
+      "width": 358,
+      "height": 473,
+      "top": 3815.375,
+      "innerText": ""
+    },
+    {
+      "tagName": "DIV",
+      "id": "mfc_mod_ad_basic_2",
+      "className": "mfc_modadbasic_ad_item",
+      "width": 358,
+      "height": 453,
+      "top": 3819.375,
+      "innerText": ""
+    },
+    {
+      "tagName": "IFRAME",
+      "id": "mfc_mod_ad_basic_2_tgtLREC",
+      "className": "",
+      "width": 358,
+      "height": 453,
+      "top": 3819.375,
+      "innerText": ""
+    }
+  ],
+  "https://m.entertain.naver.com": [
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "EntertainHeader_entertain_gnb__2ZFbT",
+      "width": 390,
+      "height": 45,
+      "top": 0,
+      "innerText": "NAVER\n엔터\n뉴스\n스포츠\n네이버톡"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "EntertainHeader_service_area__Mc9bW",
+      "width": 108.5,
+      "height": 45,
+      "top": 0,
+      "innerText": "뉴스\n스포츠"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "EntertainHeader_tool_area__KQNnX",
+      "width": 47,
+      "height": 45,
+      "top": 0,
+      "innerText": "네이버톡\n엔터 오픈톡 보러가기"
+    },
+    {
+      "tagName": "DIV",
+      "id": "wa_link_talk_tooltip",
+      "className": "EntertainHeader_link_talk_tooltip__1TMzX",
+      "width": 146,
+      "height": 47,
+      "top": 4,
+      "innerText": "엔터 오픈톡 보러가기"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "EntertainHeader_lnb_inner__QbdFR",
+      "width": 390,
+      "height": 45,
+      "top": 45,
+      "innerText": "홈\n드라마\n영화\n뮤직\n연애\n포토\n랭킹"
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_elemimagerectangle_image mfc_elemimagerectangle_type_ratio_nofix type_image mfc_elemimagerectangle_type_8 mfc_elemimagerectangle_type_shadowDown",
+      "width": 175,
+      "height": 261,
+      "top": 1351.375,
+      "innerText": ""
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_elemimagerectangle_image mfc_elemimagerectangle_type_ratio_3_4_5 type_image mfc_elemimagerectangle_type_8 mfc_elemimagerectangle_type_shadowDown",
+      "width": 358,
+      "height": 537,
+      "top": 1662.375,
+      "innerText": ""
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_elemimagerectangle_image mfc_elemimagerectangle_type_ratio_nofix type_image mfc_elemimagerectangle_type_8 mfc_elemimagerectangle_type_shadowDown",
+      "width": 175,
+      "height": 261,
+      "top": 2207.375,
+      "innerText": ""
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_tmplfeedmixed_template_body_ad template_body_ad",
+      "width": 358,
+      "height": 473,
+      "top": 2476.375,
+      "innerText": ""
+    },
+    {
+      "tagName": "DIV",
+      "id": "mfc_mod_ad_basic_1",
+      "className": "mfc_modadbasic_ad_item",
+      "width": 358,
+      "height": 453,
+      "top": 2480.375,
+      "innerText": ""
+    },
+    {
+      "tagName": "IFRAME",
+      "id": "mfc_mod_ad_basic_1_tgtLREC",
+      "className": "",
+      "width": 358,
+      "height": 453,
+      "top": 2480.375,
+      "innerText": ""
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_elemimagerectangle_image mfc_elemimagerectangle_type_ratio_nofix type_image mfc_elemimagerectangle_type_8 mfc_elemimagerectangle_type_shadowDown",
+      "width": 175,
+      "height": 261,
+      "top": 3694.75,
+      "innerText": ""
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_elemimagerectangle_image mfc_elemimagerectangle_type_ratio_nofix type_image mfc_elemimagerectangle_type_8 mfc_elemimagerectangle_type_shadowDown",
+      "width": 175,
+      "height": 261,
+      "top": 4301.125,
+      "innerText": ""
+    },
+    {
+      "tagName": "DIV",
+      "id": "",
+      "className": "mfc_tmplfeedmixed_template_body_ad template_body_ad",
+      "width": 358,
+      "height": 473,
+      "top": 4570.125,
+      "innerText": ""
+    },
+    {
+      "tagName": "DIV",
+      "id": "mfc_mod_ad_basic_2",
+      "className": "mfc_modadbasic_ad_item",
+      "width": 358,
+      "height": 453,
+      "top": 4574.125,
+      "innerText": ""
+    },
+    {
+      "tagName": "IFRAME",
+      "id": "mfc_mod_ad_basic_2_tgtLREC",
+      "className": "",
+      "width": 358,
+      "height": 453,
+      "top": 4574.125,
+      "innerText": ""
+    }
+  ]
+}
