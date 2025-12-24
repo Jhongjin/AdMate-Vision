@@ -15,12 +15,14 @@ export const sanitizeHtml = (html: string, selectors: string[], newImage: string
 
     // 2. Event Handler Cleaning (Remove onClick, onError, etc.)
     $('*').each((_, el) => {
-        const attribs = el.attribs;
-        Object.keys(attribs).forEach(attr => {
-            if (attr.startsWith('on')) {
-                $(el).removeAttr(attr);
-            }
-        });
+        const attribs = (el as any).attribs;
+        if (attribs) {
+            Object.keys(attribs).forEach(attr => {
+                if (attr.startsWith('on')) {
+                    $(el).removeAttr(attr);
+                }
+            });
+        }
     });
 
     // 3. INJECTION LOGIC based on Selectors
