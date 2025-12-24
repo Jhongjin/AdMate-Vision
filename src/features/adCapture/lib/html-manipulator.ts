@@ -97,5 +97,27 @@ export const sanitizeHtml = (html: string, selectors: string[], newImage: string
         }
     });
 
+    // 5. MOBILE VIEWPORT ENFORCEMENT
+    // Wrap entire body content in a mobile container to prevent desktop sprawling
+    const bodyContent = $('body').html() || '';
+    const mobileWrapper = `
+        <div id="admate-mobile-viewport" style="
+            max-width: 430px !important;
+            margin: 0 auto !important;
+            background-color: #fff !important;
+            min-height: 100vh !important;
+            position: relative !important;
+            overflow-x: hidden !important;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1) !important;
+        ">
+            ${bodyContent}
+        </div>
+    `;
+    $('body').html(mobileWrapper);
+
+    // Force body background to be gray to highlight the viewport
+    $('body').attr('style', 'background-color: #f0f2f5 !important; margin: 0 !important; padding: 0 !important;');
+    $('html').attr('style', 'background-color: #f0f2f5 !important;');
+
     return $.html();
 };
