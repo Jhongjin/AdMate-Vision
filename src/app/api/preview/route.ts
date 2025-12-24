@@ -75,15 +75,68 @@ export async function POST(req: Request) {
             'mobile_main': {
                 url: 'https://m.naver.com',
                 selectors: ['.main_veta', '.id_main_banner', 'div[class*="ad"]', '#veta_top'],
-                fallback: true
+                fallback: true,
+                ratio: null
             },
             'smart_channel_news': {
                 url: 'https://m.news.naver.com',
                 selectors: ['.section_ad', '._ad_header', '.ad_area', 'div[class*="ad"]'], // Dynamic candidates
                 fallback: true,
-                layoutSetup: async (p: any) => {
-                    // News specific layout fix if needed
-                }
+                ratio: 'contain',
+                minY: 0,
+                maxY: 300
+            },
+            'smart_channel_sports': {
+                url: 'https://m.sports.naver.com',
+                selectors: ['.mfc_modadbasic_ad_item', 'div[class*="SportsHeader"] + div'],
+                fallback: true,
+                ratio: 'contain',
+                minY: 0,
+                maxY: 300
+            },
+            'smart_channel_ent': {
+                url: 'https://m.entertain.naver.com',
+                selectors: ['.template_body_ad', '.mfc_modadbasic_ad_item'],
+                fallback: true,
+                ratio: 'contain',
+                minY: 0,
+                maxY: 300
+            },
+            'branding_da_sub': {
+                url: 'https://m.entertain.naver.com', // Reliable topic board
+                selectors: ['.template_body_ad', '.mfc_modadbasic_ad_item', 'div[class*="ad"]'],
+                fallback: true,
+                ratio: 'contain',
+                scrollFirst: true,
+                minY: 400,
+                maxY: 2000
+            },
+            'gfa_feed_news': {
+                url: 'https://m.news.naver.com',
+                selectors: ['._feed_ad', '.r_ad', '.ad_item', '.section_ad', 'div[class*="ad"]', 'div[class*="banner"]'],
+                fallback: true,
+                scrollFirst: true,
+                minY: 600,
+                maxY: 5000,
+                native: true
+            },
+            'gfa_feed_sports': {
+                url: 'https://m.sports.naver.com',
+                selectors: ['.template_feed_only_ad', '.mfc_tmplfeedad_template_body_ad', '.ad_item'],
+                fallback: true,
+                scrollFirst: true,
+                minY: 800,
+                maxY: 5000,
+                native: true
+            },
+            'gfa_feed_ent': {
+                url: 'https://m.entertain.naver.com',
+                selectors: ['.mfc_tmplfeedmixed_template_body_ad', '.template_body_ad', '.ad_item'],
+                fallback: true,
+                scrollFirst: true,
+                minY: 800,
+                maxY: 5000,
+                native: true
             }
         };
 
@@ -131,7 +184,7 @@ export async function POST(req: Request) {
             const maxY = 600;
 
             if (bbox.y >= minY && bbox.y < maxY && bbox.height > 20) {
-                await handle.evaluate((el: HTMLElement, { dataUri, link }: any) => {
+                await handle.evaluate((el: HTMLElement, { dataUri, link, ratio, native }: any) => {
                     el.innerHTML = '';
 
                     // Create Anchor Wrapper
@@ -140,7 +193,6 @@ export async function POST(req: Request) {
                     anchor.target = '_blank';
                     anchor.style.display = 'block';
                     anchor.style.width = '100%';
-                    anchor.style.height = '100%';
                     anchor.style.textDecoration = 'none';
                     anchor.style.boxSizing = 'border-box';
 
@@ -148,12 +200,14 @@ export async function POST(req: Request) {
                     const newImg = document.createElement('img');
                     newImg.src = dataUri;
                     newImg.style.width = '100%';
-                    newImg.style.height = 'auto'; // Default auto
-
-                    // Smart Channel Ratio Support (4.69:1 -> ~750x160)
-                    // If height is constrained, object-fit contain
                     newImg.style.display = 'block';
                     newImg.style.objectFit = 'contain';
+
+                    if (ratio === 'contain') {
+                        newImg.style.height = 'auto'; // Let width drive height
+                    } else {
+                        newImg.style.height = '100%';
+                    }
 
                     anchor.appendChild(newImg);
                     el.appendChild(anchor);
@@ -163,9 +217,18 @@ export async function POST(req: Request) {
                     el.style.margin = '0';
                     el.style.background = 'transparent';
                     el.style.border = 'none';
-                    el.style.height = 'auto'; // allow expansion
-                    el.style.minHeight = '50px';
-                }, { dataUri: base64Image, link: landingUrl });
+
+                    if (native) {
+                        // Native Feed Ad Styling Enforcement
+                        el.style.marginBottom = '10px';
+                        el.style.marginTop = '10px';
+                        newImg.style.borderRadius = '8px';
+                        newImg.style.overflow = 'hidden';
+                    } else {
+                        el.style.height = 'auto';
+                        el.style.minHeight = '50px';
+                    }
+                }, { dataUri: base64Image, link: landingUrl, native: config.native, ratio: config.ratio });
                 return true;
             }
             return false;

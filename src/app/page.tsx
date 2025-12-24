@@ -204,6 +204,9 @@ export default function Home() {
                         <option value="smart_channel_sports">네이버 스포츠 (스마트 채널)</option>
                         <option value="smart_channel_ent">네이버 연예 (스마트 채널)</option>
                         <option value="branding_da_sub">네이버 주제판 (브랜딩 DA)</option>
+                        <option value="gfa_feed_news">네이버 GFA 뉴스 피드</option>
+                        <option value="gfa_feed_sports">네이버 GFA 스포츠 피드</option>
+                        <option value="gfa_feed_ent">네이버 GFA 연예 피드</option>
                     </select>
                 </div>
 
