@@ -74,9 +74,11 @@ export async function POST(req: Request) {
         const PLACEMENT_CONFIG: Record<string, any> = {
             'mobile_main': {
                 url: 'https://m.naver.com',
-                selectors: ['.main_veta', '.id_main_banner', 'div[class*="ad"]', '#veta_top'],
+                // Updated with more robust "Special DA" fallback selectors
+                selectors: ['#veta_top', '.main_veta', 'div[class*="SpecialDA"]', '.main_ad', '._ad_header', 'div[class*="ad"]'],
                 fallback: true,
-                ratio: null
+                ratio: 'contain',
+                waitAfterLoad: 2000 // Specific delay to counter native script overwrites
             },
             'smart_channel_news': {
                 url: 'https://m.news.naver.com',
@@ -208,7 +210,13 @@ export async function POST(req: Request) {
             } catch (e) { }
         }
 
-        await page.waitForTimeout(1000);
+        // Specific Wait for Main Page to stabilize (avoid overwrite)
+        if (config.waitAfterLoad) {
+            console.log(`Waiting ${config.waitAfterLoad}ms for page stabilization...`);
+            await page.waitForTimeout(config.waitAfterLoad);
+        } else {
+            await page.waitForTimeout(1000);
+        }
 
         // 3. Inject
         let injected = false;
