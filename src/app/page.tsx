@@ -262,21 +262,18 @@ export default function Home() {
             }}>
                 {resultImage || htmlContent ? (
                     <div style={{
-                        animation: 'fadeIn 0.5s',
+                        width: '100%',
+                        height: '100%',
                         display: 'flex',
-                        flexDirection: 'column',
+                        justifyContent: 'center',
                         alignItems: 'center',
-                        maxHeight: '95vh',
-                        maxWidth: '95vw'
+                        overflow: 'hidden'
                     }}>
                         <div style={{
-                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                            borderRadius: '30px', // Mobile Feel
-                            overflow: 'hidden',
-                            width: '390px', // iPhone 13 Width
-                            height: '844px', // iPhone 13 Height
+                            width: '100%',
+                            height: '100%',
                             backgroundColor: 'white',
-                            border: '8px solid #333', // Bezel
+                            position: 'relative'
                         }}>
                             {/* Mode A: Image Screenshot */}
                             {resultImage && (
@@ -304,9 +301,6 @@ export default function Home() {
                                 />
                             )}
                         </div>
-                        <p style={{ marginTop: '1rem', color: '#6b7280', fontSize: '0.9rem', fontWeight: '500' }}>
-                            {htmlContent ? 'Live HTML Simulation (Static Snapshot)' : 'Click image to test landing page'}
-                        </p>
                     </div>
                 ) : (
                     <div style={{ textAlign: 'center', color: '#9ca3af' }}>
