@@ -182,52 +182,8 @@ export async function POST(req: Request) {
         });
         const page = await context.newPage();
 
-        // --- 1. NETWORK SHIELD (Whitelist Strategy) ---
-        console.log('Activating Network Shield (Whitelist Mode)...');
-        await page.route('**/*', (route) => {
-            const url = route.request().url();
-
-            // 1. Core Allowed Domains (Whitelist)
-            const allowedDomains = [
-                'm.naver.com',
-                'ssl.pstatic.net', // Essential CSS/Images
-                'lcs.naver.com',   // Analytics (sometimes buffers page load if blocked)
-                'finance.naver.com',
-                'news.naver.com',
-                'sports.naver.com',
-                'entertain.naver.com',
-                'comic.naver.com',
-                'n.weather.naver.com',
-                'map.naver.com',
-                'apis.naver.com'   // Some dynamic content
-            ];
-
-            // 2. Target Block Lists
-            const blockedAds = [
-                'ad.naver.com',
-                'gfa.naver.com',
-                'ad-cr.naver.com',
-                'ams.naver.com',
-                'cm.g.doubleclick.net',
-                'googleads.g.doubleclick.net'
-            ];
-
-            // Logic:
-            // If it matches a Blocked Ad domain -> ABORT (Priority)
-            // If it matches specific pstatic ad paths -> ABORT
-            // Else -> CONTINUE
-
-            const isExplicitBlock = blockedAds.some(d => url.includes(d));
-            // User Request: Do NOT block pstatic, ONLY block ad/gfa domains.
-            // const isPstaticAd = url.includes('ssl.pstatic.net/tveta/libs'); 
-
-            if (isExplicitBlock) {
-                console.log(`[Shield] Blocked: ${url}`);
-                route.abort();
-            } else {
-                route.continue();
-            }
-        });
+        // --- 1. NETWORK SHIELD REMOVED (Back to Basics) ---
+        console.log('Network Shield Exempted (Allow All Resources)');
 
         console.log(`Navigating to ${config.url}...`);
         await page.goto(config.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -317,7 +273,7 @@ export async function POST(req: Request) {
             injected = true;
         }
 
-        // 3. Injection Strategies (Sandbox)
+        // 3. Injection Strategies (Sandbox - Back to Basics)
 
         // Universal Injection Router (Inline Strategy)
         const injectIntoHandle = async (handle: any) => {
@@ -332,142 +288,83 @@ export async function POST(req: Request) {
 
                 if (bbox.y >= minY && bbox.y < maxY) {
                     await handle.evaluate((el: HTMLElement, { dataUri, link, type, ratio }: any) => {
-                        // Strategy A: Naver Main (ACR + Global Guardian + Visual Discovery)
-                        const injectMobileMain = async (el: HTMLElement, { dataUri, link }: any) => {
-                            // Function to build Safe Zone
-                            const createSafeZone = () => {
-                                const zone = document.createElement('div');
-                                zone.id = 'admate_acr_safe_zone';
-                                zone.style.cssText = `
-                    display: block !important;
-                    width: 100% !important;
-                    height: auto !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    background: #ffffff !important;
-                    position: relative !important;
-                    z-index: 5000 !important;
-                    box-sizing: border-box !important;
-                `;
-                                const a = document.createElement('a');
-                                a.href = link;
-                                a.target = '_blank';
-                                a.style.cssText = 'display: block !important; width: 100% !important; text-decoration: none !important;';
-                                const i = document.createElement('img');
-                                i.src = dataUri;
-                                i.style.cssText = 'width: 100% !important; height: auto !important; display: block !important; object-fit: contain !important;';
-                                a.appendChild(i);
-                                zone.appendChild(a);
-                                return zone;
-                            };
 
-                            // 1. Initial Injection
-                            if (!document.getElementById('admate_acr_safe_zone')) {
+                        // --- Helper: Build Ad Content ---
+                        const buildContent = () => {
+                            const a = document.createElement('a');
+                            a.href = link;
+                            a.target = '_blank';
+                            a.style.cssText = 'display: block !important; width: 100% !important; text-decoration: none !important;';
+                            const i = document.createElement('img');
+                            i.src = dataUri;
+                            // Use 'contain' to respect aspect ratio, or 'cover' if native
+                            const fit = type === 'gfa_feed' ? 'cover' : 'contain';
+                            i.style.cssText = `width: 100% !important; height: auto !important; display: block !important; object-fit: ${fit} !important;`;
+                            if (type === 'gfa_feed') i.style.borderRadius = '8px';
+                            a.appendChild(i);
+                            return a;
+                        };
+
+                        // --- STRATEGY A: Mobile Main (Simple Interval Guardian) ---
+                        if (type === 'mobile_main') {
+                            const containerId = 'admate_safe_zone';
+
+                            // 1. Initial Wipe & Inject
+                            if (!document.getElementById(containerId)) {
                                 el.innerHTML = '';
                                 el.style.cssText = 'display: block !important; height: auto !important; min-height: 50px !important; visibility: visible !important;';
-                                el.appendChild(createSafeZone());
+
+                                const zone = document.createElement('div');
+                                zone.id = containerId;
+                                zone.style.cssText = 'width: 100% !important; z-index: 5000 !important; background: white !important;';
+                                zone.appendChild(buildContent());
+                                el.appendChild(zone);
                             }
 
-                            // 2. PERMANENT GUARDIAN (Global Body Observer)
-                            if (!(window as any)._admateGuardian) {
-                                console.log('[Guardian] Starting Permanent Watchdog...');
+                            // 2. Simple Interval Guardian (Pulse every 100ms)
+                            if (!(window as any)._admateInterval) {
+                                console.log('[Guardian] Starting Interval Pulse...');
+                                (window as any)._admateInterval = setInterval(() => {
+                                    const zone = document.getElementById(containerId);
 
-                                const guardian = new MutationObserver((mutations) => {
-                                    // A. Check if Safe Zone exists
-                                    const zone = document.getElementById('admate_acr_safe_zone');
-
+                                    // Case 1: Zone Missing (Naver overwrote parent)
                                     if (!zone) {
-                                        console.log('[Guardian] Safe Zone LOST! Initiating Visual Discovery...');
+                                        console.log('[Guardian] Zone missing. Re-injecting...');
+                                        el.innerHTML = ''; // Clear Naver content
+                                        const newZone = document.createElement('div');
+                                        newZone.id = containerId;
+                                        newZone.style.cssText = 'width: 100% !important; z-index: 5000 !important; background: white !important;';
+                                        newZone.appendChild(buildContent());
+                                        el.appendChild(newZone);
+                                    }
 
-                                        // B. Visual Discovery Logic
-                                        // Naver Main Ad is usually the first big div below the header/gnb.
-                                        // We look for any div that looks like an ad (based on class or position).
-                                        let target = null;
-
-                                        // Priority 1: Known Classes
-                                        const candidates = document.querySelectorAll('#veta_top, .main_veta, div[class*="SpecialDA"], div[class*="main_ad"]');
-                                        if (candidates.length > 0) {
-                                            target = candidates[0];
-                                        }
-
-                                        // Priority 2: Visual Scan (First element with height > 50px below 100px)
-                                        if (!target) {
-                                            const divs = document.querySelectorAll('div');
-                                            for (const d of divs as any) {
-                                                const rect = d.getBoundingClientRect();
-                                                // Heuristic: Top > 100 (below header), Min Height 50, Full Width-ish
-                                                if (rect.top > 80 && rect.top < 500 && rect.height > 50 && rect.width > 300) {
-                                                    // Avoid GNB or News
-                                                    if (d.id === 'header' || d.classList.contains('gnb_banner')) continue;
-                                                    console.log('[Guardian] Visual Candidate Found:', d.className);
-                                                    target = d;
-                                                    break;
-                                                }
+                                    // Case 2: Zone Exists but has neighbors (Naver appended content)
+                                    if (zone && zone.parentElement && zone.parentElement.children.length > 1) {
+                                        Array.from(zone.parentElement.children).forEach(child => {
+                                            if (child.id !== containerId) {
+                                                child.remove(); // Kill intruders
                                             }
-                                        }
-
-                                        if (target) {
-                                            console.log('[Guardian] Re-injecting into target...');
-                                            target.innerHTML = '';
-                                            target.appendChild(createSafeZone());
-                                        }
+                                        });
                                     }
 
-                                    // C. Anti-Tamper (If Safe Zone exists but siblings are added)
-                                    if (zone && zone.parentElement) {
-                                        const parent = zone.parentElement;
-                                        if (parent.children.length > 1) {
-                                            Array.from(parent.children).forEach(child => {
-                                                if (child.id !== 'admate_acr_safe_zone') {
-                                                    console.log('[Guardian] Removing intruder...');
-                                                    child.remove();
-                                                }
-                                            });
-                                        }
-                                    }
-                                });
-
-                                // Observe BODY to catch entire section replacements
-                                guardian.observe(document.body, { childList: true, subtree: true });
-                                (window as any)._admateGuardian = guardian;
+                                }, 100);
                             }
                             return true;
-                        };
-                        // --- INLINE STRATEGIES ---
-                        if (type === 'mobile_main') {
-                            injectMobileMain(el, { dataUri, link });
+
                         } else if (type === 'gfa_feed') {
-                            // STRATEGY B: GFA
+                            // --- STRATEGY B: GFA Feed (Native Style) ---
+                            // Simple replace, no guardian needed usually
                             el.innerHTML = '';
-                            const anchor = document.createElement('a');
-                            anchor.href = link;
-                            anchor.target = '_blank';
-                            anchor.style.display = 'block';
-
-                            const img = document.createElement('img');
-                            img.src = dataUri;
-                            img.style.cssText = 'width: 100% !important; height: auto !important; display: block !important; border-radius: 8px !important;';
-
-                            anchor.appendChild(img);
-                            el.appendChild(anchor);
+                            el.appendChild(buildContent());
+                            return true;
 
                         } else {
-                            // STRATEGY C: STANDARD
+                            // --- STRATEGY C: Standard (Simple Overwrite) ---
                             el.innerHTML = '';
-                            const anchor = document.createElement('a');
-                            anchor.href = link;
-                            anchor.target = '_blank';
-                            anchor.style.display = 'block';
-
-                            const img = document.createElement('img');
-                            img.src = dataUri;
-                            img.style.cssText = 'width: 100% !important; display: block !important;';
-                            if (ratio === 'contain') img.style.height = 'auto';
-                            else img.style.height = '100%';
-
-                            anchor.appendChild(img);
-                            el.appendChild(anchor);
+                            el.appendChild(buildContent());
+                            return true;
                         }
+
                     }, { dataUri: base64Image, link: landingUrl, type: config.type, ratio: config.ratio });
                     return true;
                 }
@@ -495,45 +392,9 @@ export async function POST(req: Request) {
             }
         }
 
-        // 2. Visual Discovery Scan (Selector-less) - High Priority Fallback
-        // Requested by user: "Find element between Logo and Menu by coordinates"
-        if (config.aggressive && !injected && config.type === 'mobile_main') {
-            console.log('Initiating Top-Level Visual Discovery...');
-            try {
-                // Find candidate via Page Function
-                const handle = await page.evaluateHandle(() => {
-                    const divs = document.querySelectorAll('div');
-                    let bestCandidate = null;
-
-                    for (const d of Array.from(divs)) {
-                        const rect = d.getBoundingClientRect();
-                        // Heuristic:
-                        // Top > 50 (Header is ~50px)
-                        // Top < 400 (Should be near top)
-                        // Height > 50 (Ad is substantial)
-                        // Width > 300 (Full width)
-                        if (rect.top > 50 && rect.top < 400 && rect.height > 50 && rect.width > 300) {
-                            // Exclude Header/GNB explicitly if possible
-                            if (d.id === 'header' || d.classList.contains('gnb_banner') || d.id === 'gnb') continue;
-
-                            // Check for internal structure (ads often have iframes or images)
-                            // or just take the first big block in this zone.
-                            bestCandidate = d;
-                            break; // Take the first valid one near the top
-                        }
-                    }
-                    return bestCandidate;
-                });
-
-                if (handle) {
-                    if (await injectIntoHandle(handle)) {
-                        injected = true;
-                        console.log('Injected via Visual Discovery');
-                    }
-                }
-            } catch (e) {
-                console.log('Visual Discovery Failed:', e);
-            }
+        // 2. Simple Retry (Optional)
+        if (config.aggressive && injected) {
+            await page.waitForTimeout(500);
         }
 
         // 3. Fallback Scan (Legacy)
