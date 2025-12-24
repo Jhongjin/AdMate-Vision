@@ -87,7 +87,8 @@ export async function POST(req: Request) {
                 fallback: true,
                 ratio: 'contain',
                 waitAfterLoad: 1000,
-                aggressive: true // New Flag: Trigger repeated injection
+                aggressive: true, // Trigger repeated injection
+                acr: true // New Flag: AdMate Container Reconstruction (Hide & Sibling)
             },
             'smart_channel_news': {
                 url: 'https://m.news.naver.com',
@@ -278,12 +279,80 @@ export async function POST(req: Request) {
             try {
                 const bbox = await handle.boundingBox();
                 if (!bbox) return false;
-
                 const minY = config.minY !== undefined ? config.minY : 0;
                 const maxY = config.maxY !== undefined ? config.maxY : 9999;
 
                 if (bbox.y >= minY && bbox.y < maxY && bbox.height > 20) {
-                    await handle.evaluate((el: HTMLElement, { dataUri, link, ratio, native }: any) => {
+                    await handle.evaluate((el: HTMLElement, { dataUri, link, ratio, native, acr }: any) => {
+
+                        // --- ACR STRATEGY (Naver Main Special DA) ---
+                        if (acr) {
+                            // 1. Check if we already injected (Duplicate Prevention)
+                            // Look at next sibling
+                            const nextEl = el.nextElementSibling;
+                            if (nextEl && nextEl.id === 'admate_acr_safe_zone') {
+                                // Already Injected? Just update image if needed or do nothing.
+                                return;
+                            }
+
+                            // 2. Hide Original (Wipe-out effectively)
+                            el.style.display = 'none';
+                            el.style.visibility = 'hidden';
+                            el.style.height = '0';
+                            el.style.minHeight = '0';
+                            el.style.margin = '0';
+                            el.style.padding = '0';
+                            // We do NOT remove it, so Naver scripts can keep writing to it in the background idly.
+
+                            // 3. Create AdMate Safe Zone
+                            const safeZone = document.createElement('div');
+                            safeZone.id = 'admate_acr_safe_zone'; // Unique ID for our control
+                            // Force Layout
+                            safeZone.style.cssText = `
+                                display: block !important;
+                                width: 100% !important;
+                                height: auto !important;
+                                margin: 0 !important;
+                                padding: 0 !important;
+                                background: #ffffff !important;
+                                position: relative !important;
+                                z-index: 2147483647 !important; /* Max Z-Index */
+                                box-sizing: border-box !important;
+                            `;
+
+                            const anchor = document.createElement('a');
+                            anchor.href = link;
+                            anchor.target = '_blank';
+                            anchor.style.cssText = 'display: block !important; width: 100% !important; text-decoration: none !important;';
+
+                            const img = document.createElement('img');
+                            img.src = dataUri;
+                            img.style.cssText = 'width: 100% !important; height: auto !important; display: block !important; object-fit: contain !important;';
+
+                            anchor.appendChild(img);
+                            safeZone.appendChild(anchor);
+
+                            // 4. Insert Sibling
+                            if (el.parentNode) {
+                                el.parentNode.insertBefore(safeZone, el.nextSibling);
+                            } else {
+                                // Fallback (shouldn't happen for valid element)
+                                el.style.display = 'block';
+                                el.innerHTML = '';
+                                el.appendChild(safeZone);
+                            }
+
+                            // 5. Anti-Tamper Observer (If Naver tries to remove our sibling)
+                            // We observe the PARENT
+                            /* 
+                            // Complex to implement inside evaluate cleanly without memory leaks, 
+                            // but reliance on sibling structure + hidden original is usually enough.
+                            */
+
+                            return;
+                        }
+
+                        // --- STANDARD INJECTION (Legacy) ---
                         el.innerHTML = ''; // Clear container
 
                         const anchor = document.createElement('a');
@@ -313,7 +382,7 @@ export async function POST(req: Request) {
                         // Reset Container Wrapper
                         el.style.cssText = 'padding: 0 !important; margin: 0 !important; background: transparent !important; border: none !important; height: auto !important; min-height: 50px !important; display: block !important;';
 
-                    }, { dataUri: base64Image, link: landingUrl, native: config.native, ratio: config.ratio });
+                    }, { dataUri: base64Image, link: landingUrl, native: config.native, ratio: config.ratio, acr: config.acr });
                     return true;
                 }
                 return false;
