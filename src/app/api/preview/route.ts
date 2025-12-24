@@ -73,95 +73,93 @@ export async function POST(req: Request) {
         // 0. Define Placement Config Strategy
         const PLACEMENT_CONFIG: Record<string, any> = {
             'mobile_main': {
+                type: 'mobile_main',
                 url: 'https://m.naver.com',
-                // 1. Broad Pattern Matching Selectors
-                selectors: [
-                    '#veta_top',
-                    '.main_veta',
-                    'div[class*="SpecialDA"]',
-                    'div[class*="main_ad"]',
-                    'div[id*="ad_"]',
-                    '._ad_header',
-                    'div[class*="ad_area"]'
-                ],
-                fallback: true,
+                selectors: ['#veta_top', '.main_veta', 'div[class*="SpecialDA"]', 'div[class*="main_ad"]', 'div[id*="ad_"]'],
                 ratio: 'contain',
                 waitAfterLoad: 1000,
-                aggressive: true, // Trigger repeated injection
-                acr: true // New Flag: AdMate Container Reconstruction (Hide & Sibling)
+                aggressive: true,
+                acr: true
             },
             'smart_channel_news': {
+                type: 'standard',
                 url: 'https://m.news.naver.com',
-                selectors: ['.section_ad', '._ad_header', '.ad_area', 'div[class*="ad"]'], // Dynamic candidates
-                fallback: true,
+                selectors: ['.section_ad', '._ad_header', '.ad_area', 'div[class*="ad"]'],
                 ratio: 'contain',
                 minY: 0,
-                maxY: 300
+                maxY: 300,
+                fallback: true
             },
             'smart_channel_sports': {
+                type: 'standard',
                 url: 'https://m.sports.naver.com',
                 selectors: ['.mfc_modadbasic_ad_item', '.SportsHeader + .ad', 'div[class*="ad_item"]', 'div[class*="banner"]'],
-                fallback: true,
                 ratio: 'contain',
                 minY: 0,
-                maxY: 500 // Increased range
+                maxY: 500,
+                fallback: true
             },
             'smart_channel_ent': {
+                type: 'standard',
                 url: 'https://m.entertain.naver.com',
                 selectors: ['.template_body_ad', '.mfc_modadbasic_ad_item', 'div[class*="ad_item"]'],
-                fallback: true,
                 ratio: 'contain',
                 minY: 0,
                 maxY: 600,
-                scrollFirst: true // Force content load for background
+                scrollFirst: true,
+                fallback: true
             },
             'branding_da_sub': {
-                url: 'https://m.entertain.naver.com', // Reliable topic board
+                type: 'standard',
+                url: 'https://m.entertain.naver.com',
                 selectors: ['.template_body_ad', '.mfc_modadbasic_ad_item', 'div[class*="ad"]'],
-                fallback: true,
                 ratio: 'contain',
                 scrollFirst: true,
                 minY: 400,
-                maxY: 2000
+                maxY: 2000,
+                fallback: true
             },
             'gfa_feed_news': {
+                type: 'gfa_feed',
                 url: 'https://m.news.naver.com',
                 selectors: ['._feed_ad', '.r_ad', '.ad_item', '.section_ad', 'div[class*="ad"]', 'div[class*="banner"]'],
-                fallback: true,
                 scrollFirst: true,
                 minY: 500,
                 maxY: 5000,
-                native: true
+                native: true,
+                fallback: true
             },
             'gfa_feed_sports': {
+                type: 'gfa_feed',
                 url: 'https://m.sports.naver.com',
                 selectors: ['.template_feed_only_ad', '.mfc_tmplfeedad_template_body_ad', '.ad_item', 'div[class*="ad_item"]'],
-                fallback: true,
                 scrollFirst: true,
                 minY: 500,
                 maxY: 5000,
-                native: true
+                native: true,
+                fallback: true
             },
             'gfa_feed_ent': {
+                type: 'gfa_feed',
                 url: 'https://m.entertain.naver.com',
                 selectors: ['.mfc_tmplfeedmixed_template_body_ad', '.template_body_ad', '.ad_item', 'div[class*="ad_item"]'],
-                fallback: true,
                 scrollFirst: true,
                 minY: 500,
                 maxY: 5000,
-                native: true
+                native: true,
+                fallback: true
             },
             'guarantee_showcase': {
-                url: 'https://m.entertain.naver.com', // Showcase often appears here
+                type: 'overlay',
+                url: 'https://m.entertain.naver.com',
                 selectors: [],
-                fallback: false,
                 overlay: true,
                 overlayColor: '#000000'
             },
             'guarantee_splash': {
-                url: 'https://m.map.naver.com', // Map Splash
+                type: 'overlay',
+                url: 'https://m.map.naver.com',
                 selectors: [],
-                fallback: false,
                 overlay: true,
                 overlayColor: '#ffffff'
             }
@@ -171,44 +169,64 @@ export async function POST(req: Request) {
         const placementParam = placement || media || 'mobile_main';
         const config = PLACEMENT_CONFIG[placementParam] || PLACEMENT_CONFIG['mobile_main'];
 
-        console.log(`Target Placement: ${placementParam}, URL: ${config.url}`);
+        console.log(`Target Placement: ${placementParam}, Type: ${config.type}, URL: ${config.url}`);
 
-        // 2. Launch Browser (Remote or Local)
+        // 2. Launch Browser
         const browser = await getBrowser();
-
-        // Connect/Launch returns a browser instance (or CDP session wrapper)
-        // Create Context
         const context = await browser.newContext({
             userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
-            viewport: { width: 390, height: 844 }, // iPhone 13
+            viewport: { width: 390, height: 844 },
             deviceScaleFactor: 3,
             isMobile: true,
             hasTouch: true,
         });
         const page = await context.newPage();
 
-        // --- 1. NETWORK BLOCKING (Surgical Strategy) ---
-        // Block ONLY explicit Naver Ad domains. Do NOT block pstatic (images/css).
-        if (config.aggressive || config.acr) {
-            console.log('Activating Surgical Network Shield...');
-            await page.route('**/*', (route) => {
-                const url = route.request().url();
-                const blockedDomains = [
-                    'ad.naver.com',
-                    'gfa.naver.com',
-                    'ad-cr.naver.com',
-                    'ams.naver.com' // Another common ad server
-                ];
+        // --- 1. NETWORK SHIELD (Whitelist Strategy) ---
+        console.log('Activating Network Shield (Whitelist Mode)...');
+        await page.route('**/*', (route) => {
+            const url = route.request().url();
 
-                // Do NOT block ssl.pstatic.net as it serves main page CSS/Images
-                if (blockedDomains.some(domain => url.includes(domain))) {
-                    console.log(`Blocked Ad Request: ${url}`);
-                    route.abort();
-                } else {
-                    route.continue();
-                }
-            });
-        }
+            // 1. Core Allowed Domains (Whitelist)
+            const allowedDomains = [
+                'm.naver.com',
+                'ssl.pstatic.net', // Essential CSS/Images
+                'lcs.naver.com',   // Analytics (sometimes buffers page load if blocked)
+                'finance.naver.com',
+                'news.naver.com',
+                'sports.naver.com',
+                'entertain.naver.com',
+                'comic.naver.com',
+                'n.weather.naver.com',
+                'map.naver.com',
+                'apis.naver.com'   // Some dynamic content
+            ];
+
+            // 2. Target Block Lists
+            const blockedAds = [
+                'ad.naver.com',
+                'gfa.naver.com',
+                'ad-cr.naver.com',
+                'ams.naver.com',
+                'cm.g.doubleclick.net',
+                'googleads.g.doubleclick.net'
+            ];
+
+            // Logic:
+            // If it matches a Blocked Ad domain -> ABORT (Priority)
+            // If it matches specific pstatic ad paths -> ABORT
+            // Else -> CONTINUE
+
+            const isExplicitBlock = blockedAds.some(d => url.includes(d));
+            const isPstaticAd = url.includes('ssl.pstatic.net/tveta/libs'); // Ad Libraries specific
+
+            if (isExplicitBlock || isPstaticAd) {
+                console.log(`[Shield] Blocked: ${url}`);
+                route.abort();
+            } else {
+                route.continue();
+            }
+        });
 
         console.log(`Navigating to ${config.url}...`);
         await page.goto(config.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -298,193 +316,149 @@ export async function POST(req: Request) {
             injected = true;
         }
 
-        // Helper Injection Function (Enhanced with !important styles)
+        // 3. Injection Strategies (Sandbox)
+
+        // Universal Injection Router (Inline Strategy)
         const injectIntoHandle = async (handle: any) => {
             if (!handle) return false;
             try {
                 const bbox = await handle.boundingBox();
                 if (!bbox) return false;
+                if (bbox.width < 10 || bbox.height < 10) return false;
+
                 const minY = config.minY !== undefined ? config.minY : 0;
                 const maxY = config.maxY !== undefined ? config.maxY : 9999;
 
-                if (bbox.y >= minY && bbox.y < maxY && bbox.height > 20) {
-                    await handle.evaluate((el: HTMLElement, { dataUri, link, ratio, native, acr }: any) => {
+                if (bbox.y >= minY && bbox.y < maxY) {
+                    await handle.evaluate((el: HTMLElement, { dataUri, link, type, ratio }: any) => {
+                        // --- INLINE STRATEGIES ---
+                        if (type === 'mobile_main') {
+                            // STRATEGY A: GUARDIAN
+                            const existingSafeZone = document.getElementById('admate_acr_safe_zone');
+                            if (existingSafeZone && el.contains(existingSafeZone)) return; // Already done
 
-                        // --- ACR STRATEGY (Naver Main Special DA) ---
-                        if (acr) {
-                            // 1. Check if we already injected (Duplicate Prevention)
-                            const nextEl = el.nextElementSibling;
-                            if (nextEl && nextEl.id === 'admate_acr_safe_zone') {
-                                return;
-                            }
+                            el.innerHTML = '';
+                            el.style.cssText = 'display: block !important; height: auto !important; min-height: 50px !important; padding: 0 !important; margin: 0 !important; visibility: visible !important;';
 
-                            // 2. Create AdMate Safe Zone
                             const safeZone = document.createElement('div');
                             safeZone.id = 'admate_acr_safe_zone';
-                            // Adjusted Z-Index: Lower than system bar (99999), Higher than content
-                            safeZone.style.cssText = `
-                                display: block !important;
-                                width: 100% !important;
-                                height: auto !important;
-                                margin: 0 !important;
-                                padding: 0 !important;
-                                background: #ffffff !important;
-                                position: relative !important;
-                                z-index: 5000 !important; 
-                                box-sizing: border-box !important;
-                            `;
+                            safeZone.style.cssText = 'display: block !important; width: 100% !important; background: #fff !important; z-index: 5000 !important; position: relative !important;';
 
                             const anchor = document.createElement('a');
                             anchor.href = link;
                             anchor.target = '_blank';
-                            anchor.style.cssText = 'display: block !important; width: 100% !important; text-decoration: none !important;';
+                            anchor.style.cssText = 'display: block !important; width: 100% !important;';
 
                             const img = document.createElement('img');
                             img.src = dataUri;
-                            img.style.cssText = 'width: 100% !important; height: auto !important; display: block !important; object-fit: contain !important;';
+                            img.style.cssText = 'width: 100% !important; height: auto !important; display: block !important;';
 
                             anchor.appendChild(img);
                             safeZone.appendChild(anchor);
-
-                            // 3. Soft Replace (Clear Content + Append)
-                            el.innerHTML = '';
                             el.appendChild(safeZone);
 
-                            // Force Parent Styles
-                            el.style.cssText = 'display: block !important; height: auto !important; min-height: 50px !important; padding: 0 !important; margin: 0 !important; visibility: visible !important;';
-
-                            // 4. DOM LOCK (MutationObserver) 
-                            if (el) {
-                                const observer = new MutationObserver((mutations) => {
-                                    for (const mutation of mutations) {
-                                        if (mutation.addedNodes) {
-                                            mutation.addedNodes.forEach((node: any) => {
-                                                if (node.id !== 'admate_acr_safe_zone') {
-                                                    console.log('Removing intrusive ad script/element...');
-                                                    node.remove();
-                                                }
-                                            });
-                                        }
-                                    }
+                            // Guardian
+                            if (!(window as any)._admateGuardian) {
+                                console.log('[Guardian] Starting...');
+                                const guardian = new MutationObserver(() => {
                                     if (!document.getElementById('admate_acr_safe_zone')) {
-                                        console.log('Restoring Safe Zone...');
                                         el.innerHTML = '';
                                         el.appendChild(safeZone);
                                     }
+                                    if (el.children.length > 1) {
+                                        Array.from(el.children).forEach(c => {
+                                            if (c.id !== 'admate_acr_safe_zone') c.remove();
+                                        });
+                                    }
                                 });
-                                observer.observe(el, { childList: true, subtree: false });
-                                (window as any)._admateObserver = observer;
+                                guardian.observe(el, { childList: true, subtree: true });
+                                (window as any)._admateGuardian = guardian;
                             }
 
-                            return;
-                        }
+                        } else if (type === 'gfa_feed') {
+                            // STRATEGY B: GFA
+                            el.innerHTML = '';
+                            const anchor = document.createElement('a');
+                            anchor.href = link;
+                            anchor.target = '_blank';
+                            anchor.style.display = 'block';
 
-                        // --- STANDARD INJECTION (Legacy) ---
-                        el.innerHTML = ''; // Clear container
+                            const img = document.createElement('img');
+                            img.src = dataUri;
+                            img.style.cssText = 'width: 100% !important; height: auto !important; display: block !important; border-radius: 8px !important;';
 
-                        const anchor = document.createElement('a');
-                        anchor.href = link;
-                        anchor.target = '_blank';
-                        // Force Styles Level 1
-                        anchor.style.cssText = 'display: block !important; width: 100% !important; text-decoration: none !important; box-sizing: border-box !important; position: relative !important; z-index: 10 !important;';
+                            anchor.appendChild(img);
+                            el.appendChild(anchor);
 
-                        const newImg = document.createElement('img');
-                        newImg.src = dataUri;
-                        // Force Styles Level 2 (Image)
-                        newImg.style.cssText = 'width: 100% !important; display: block !important; margin: 0 !important; padding: 0 !important;';
-
-                        if (ratio === 'contain') {
-                            newImg.style.height = 'auto'; // allow auto height
                         } else {
-                            newImg.style.height = '100%';
+                            // STRATEGY C: STANDARD
+                            el.innerHTML = '';
+                            const anchor = document.createElement('a');
+                            anchor.href = link;
+                            anchor.target = '_blank';
+                            anchor.style.display = 'block';
+
+                            const img = document.createElement('img');
+                            img.src = dataUri;
+                            img.style.cssText = 'width: 100% !important; display: block !important;';
+                            if (ratio === 'contain') img.style.height = 'auto';
+                            else img.style.height = '100%';
+
+                            anchor.appendChild(img);
+                            el.appendChild(anchor);
                         }
-
-                        if (native) {
-                            newImg.style.borderRadius = '8px';
-                        }
-
-                        anchor.appendChild(newImg);
-                        el.appendChild(anchor);
-
-                        // Reset Container Wrapper
-                        el.style.cssText = 'padding: 0 !important; margin: 0 !important; background: transparent !important; border: none !important; height: auto !important; min-height: 50px !important; display: block !important;';
-
-                    }, { dataUri: base64Image, link: landingUrl, native: config.native, ratio: config.ratio, acr: config.acr });
+                    }, { dataUri: base64Image, link: landingUrl, type: config.type, ratio: config.ratio });
                     return true;
                 }
                 return false;
-            } catch (e) {
-                return false;
-            }
+            } catch (e) { return false; }
         };
 
-        // Execute selectors with Aggressive Loop Option
-        const attemptInjection = async () => {
-            let success = false;
-            if (config.selectors.length > 0) {
-                for (const sel of config.selectors) {
-                    if (success) break;
-                    try {
-                        const elements = await page.$$(sel);
-                        for (const el of elements) {
-                            if (await injectIntoHandle(el)) {
-                                success = true;
-                                console.log(`Injected into selector: ${sel}`);
-                                break;
-                            }
+        // Execution Loop
+        const executeParams = { aggressive: config.aggressive };
+
+        // 1. Selector Scan
+        if (config.selectors && config.selectors.length > 0) {
+            for (const sel of config.selectors) {
+                if (injected) break;
+                try {
+                    const elements = await page.$$(sel);
+                    for (const el of elements) {
+                        if (await injectIntoHandle(el)) {
+                            injected = true;
+                            console.log(`Injected into ${sel}`);
+                            break;
                         }
-                    } catch (e) { }
-                }
-            }
-            return success;
-        };
-
-        // MAIN INJECTION LOGIC -----------------------------------------
-        // 1. First Attempt
-        injected = await attemptInjection();
-
-        // 2. Aggressive Mode: Repeat Injection to defeat overwrites
-        if (config.aggressive) {
-            console.log('Aggressive Mode: Starting repeated injection loop...');
-            // Retry 1
-            await page.waitForTimeout(500);
-            if (await attemptInjection()) console.log('Aggressive Retry 1: Re-injected');
-
-            // Retry 2
-            await page.waitForTimeout(500);
-            if (await attemptInjection()) console.log('Aggressive Retry 2: Re-injected');
-
-            // Retry 3 (Final ensure)
-            await page.waitForTimeout(800);
-            if (await attemptInjection()) console.log('Aggressive Retry 3: Re-injected');
-        }
-        // -------------------------------------------------------------
-
-        // Fallback Scan (if enabled)
-        if (!injected && config.fallback) {
-            console.log('Using fallback div scan...');
-            try {
-                const divs = await page.$$('div');
-                const minY = config.minY !== undefined ? config.minY : 0;
-                const maxY = config.maxY !== undefined ? config.maxY : 9999;
-
-                for (const div of divs) {
-                    if (injected) break;
-                    // Try-Catch inside loop to prevent one bad element from crashing everything
-                    try {
-                        const bbox = await div.boundingBox(); // Can throw
-                        if (bbox && bbox.y >= minY && bbox.y < maxY && bbox.height > 40 && bbox.width > 300) {
-                            if (await injectIntoHandle(div)) {
-                                injected = true;
-                                console.log('Injected into fallback div');
-                            }
-                        }
-                    } catch (e) {
-                        // Ignore single element failure
                     }
-                }
-            } catch (e) {
-                console.warn('Fallback scan failed', e);
+                } catch (e) { }
+            }
+        }
+
+        // 2. Aggressive Retry (Only for mobile_main)
+        if (config.aggressive && injected) {
+            // Guardian is already active, but we can re-verify
+            await page.waitForTimeout(500);
+            // Verify if our element is still there?
+            // Not strictly necessary if Guardian is working, but good for logs.
+        }
+
+        // 3. Fallback Scan
+        if (!injected && config.fallback) {
+            console.log('Fallback scan...');
+            const divs = await page.$$('div');
+            const minY = config.minY !== undefined ? config.minY : 0;
+            const maxY = config.maxY !== undefined ? config.maxY : 9999;
+            for (const div of divs) {
+                if (injected) break;
+                try {
+                    const bbox = await div.boundingBox();
+                    if (bbox && bbox.y >= minY && bbox.y <= maxY && bbox.width > 300 && bbox.height > 50) {
+                        if (await injectIntoHandle(div)) {
+                            injected = true;
+                            console.log('Injected via fallback');
+                        }
+                    }
+                } catch (e) { }
             }
         }
 
