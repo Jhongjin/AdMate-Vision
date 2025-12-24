@@ -495,15 +495,48 @@ export async function POST(req: Request) {
             }
         }
 
-        // 2. Aggressive Retry (Only for mobile_main)
-        if (config.aggressive && injected) {
-            // Guardian is already active, but we can re-verify
-            await page.waitForTimeout(500);
-            // Verify if our element is still there?
-            // Not strictly necessary if Guardian is working, but good for logs.
+        // 2. Visual Discovery Scan (Selector-less) - High Priority Fallback
+        // Requested by user: "Find element between Logo and Menu by coordinates"
+        if (config.aggressive && !injected && config.type === 'mobile_main') {
+            console.log('Initiating Top-Level Visual Discovery...');
+            try {
+                // Find candidate via Page Function
+                const handle = await page.evaluateHandle(() => {
+                    const divs = document.querySelectorAll('div');
+                    let bestCandidate = null;
+
+                    for (const d of Array.from(divs)) {
+                        const rect = d.getBoundingClientRect();
+                        // Heuristic:
+                        // Top > 50 (Header is ~50px)
+                        // Top < 400 (Should be near top)
+                        // Height > 50 (Ad is substantial)
+                        // Width > 300 (Full width)
+                        if (rect.top > 50 && rect.top < 400 && rect.height > 50 && rect.width > 300) {
+                            // Exclude Header/GNB explicitly if possible
+                            if (d.id === 'header' || d.classList.contains('gnb_banner') || d.id === 'gnb') continue;
+
+                            // Check for internal structure (ads often have iframes or images)
+                            // or just take the first big block in this zone.
+                            bestCandidate = d;
+                            break; // Take the first valid one near the top
+                        }
+                    }
+                    return bestCandidate;
+                });
+
+                if (handle) {
+                    if (await injectIntoHandle(handle)) {
+                        injected = true;
+                        console.log('Injected via Visual Discovery');
+                    }
+                }
+            } catch (e) {
+                console.log('Visual Discovery Failed:', e);
+            }
         }
 
-        // 3. Fallback Scan
+        // 3. Fallback Scan (Legacy)
         if (!injected && config.fallback) {
             console.log('Fallback scan...');
             const divs = await page.$$('div');
