@@ -6,6 +6,7 @@ export default function Home() {
     const [imageUrl, setImageUrl] = useState('https://via.placeholder.com/750x200?text=AdMate+Vision');
     const [landingUrl, setLandingUrl] = useState('https://admate.co.kr');
     const [resultImage, setResultImage] = useState<string | null>(null);
+    const [htmlContent, setHtmlContent] = useState<string | null>(null); // New state for HTML Mode
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false); // New state for upload
     const [error, setError] = useState<string | null>(null);
@@ -75,6 +76,7 @@ export default function Home() {
         setLoading(true);
         setError(null);
         setResultImage(null);
+        setHtmlContent(null); // Reset HTML
 
         try {
             // Get form data directly since we used unchecked select
@@ -97,7 +99,11 @@ export default function Home() {
                 throw new Error(data.error || 'Failed to generate preview');
             }
 
-            setResultImage(data.screenshot);
+            if (data.type === 'html') {
+                setHtmlContent(data.html);
+            } else {
+                setResultImage(data.screenshot);
+            }
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -254,7 +260,7 @@ export default function Home() {
                 position: 'relative',
                 overflow: 'hidden'
             }}>
-                {resultImage ? (
+                {resultImage || htmlContent ? (
                     <div style={{
                         animation: 'fadeIn 0.5s',
                         display: 'flex',
@@ -265,25 +271,41 @@ export default function Home() {
                     }}>
                         <div style={{
                             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                            borderRadius: '2px', // Slight rounding or sharp for precise feel
+                            borderRadius: '30px', // Mobile Feel
                             overflow: 'hidden',
-                            lineHeight: 0
+                            width: '390px', // iPhone 13 Width
+                            height: '844px', // iPhone 13 Height
+                            backgroundColor: 'white',
+                            border: '8px solid #333', // Bezel
                         }}>
-                            <a href={landingUrl} target="_blank" rel="noopener noreferrer">
-                                <img
-                                    src={resultImage}
-                                    alt="Generated Preview"
+                            {/* Mode A: Image Screenshot */}
+                            {resultImage && (
+                                <a href={landingUrl} target="_blank" rel="noopener noreferrer">
+                                    <img
+                                        src={resultImage}
+                                        alt="Generated Preview"
+                                        style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                                    />
+                                </a>
+                            )}
+
+                            {/* Mode B: HTML Simulation (Iframe) */}
+                            {htmlContent && (
+                                <iframe
+                                    srcDoc={htmlContent}
                                     style={{
-                                        maxHeight: '85vh',
-                                        maxWidth: '100%',
-                                        objectFit: 'contain',
-                                        display: 'block'
+                                        width: '100%',
+                                        height: '100%',
+                                        border: 'none',
+                                        backgroundColor: 'white'
                                     }}
+                                    title="Ad Simulation"
+                                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
                                 />
-                            </a>
+                            )}
                         </div>
                         <p style={{ marginTop: '1rem', color: '#6b7280', fontSize: '0.9rem', fontWeight: '500' }}>
-                            Click image to test landing page
+                            {htmlContent ? 'Live HTML Simulation (Static Snapshot)' : 'Click image to test landing page'}
                         </p>
                     </div>
                 ) : (
