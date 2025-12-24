@@ -188,11 +188,15 @@ export async function POST(req: Request) {
         if (!injected && config.fallback) {
             console.log('Using fallback div scan...');
             const divs = await page.$$('div');
+            // Determine fallback constraints
+            const minY = config.minY !== undefined ? config.minY : 0;
+            const maxY = config.maxY !== undefined ? config.maxY : 600;
+
             for (const div of divs) {
                 if (injected) break;
                 const bbox = await div.boundingBox();
-                // Smart Channel is usually wide (300+) and near top
-                if (bbox && bbox.y < 300 && bbox.height > 40 && bbox.width > 300) {
+
+                if (bbox && bbox.y >= minY && bbox.y < maxY && bbox.height > 40 && bbox.width > 300) {
                     if (await injectIntoHandle(div)) {
                         injected = true;
                         console.log('Injected into fallback div');
