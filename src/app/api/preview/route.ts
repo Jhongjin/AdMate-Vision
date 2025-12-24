@@ -273,220 +273,157 @@ export async function POST(req: Request) {
             injected = true;
         }
 
-        // 3. Injection Strategies (Sandbox - Back to Basics)
+        // 3. Ultimate Injection Strategy (Global Scan + Overlay)
+        const executeUltimateInjection = async () => {
+            console.log('Starting Ultimate Injection...');
 
-        // Universal Injection Router (Inline Strategy)
-        const injectIntoHandle = async (handle: any) => {
-            if (!handle) return false;
-            try {
-                const bbox = await handle.boundingBox();
-                if (!bbox) return false;
-                if (bbox.width < 10 || bbox.height < 10) return false;
+            return await page.evaluate(({ dataUri, link, type, ratio, selectors, aggressive }: any) => {
+                const LOG_PREFIX = '[UltimateBarrier]';
 
-                const minY = config.minY !== undefined ? config.minY : 0;
-                const maxY = config.maxY !== undefined ? config.maxY : 9999;
+                // --- 1. Helper: Global Target Finder (Iframe + Shadow + Main) ---
+                const findTargetGlobally = () => {
+                    const candidates: HTMLElement[] = [];
 
-                if (bbox.y >= minY && bbox.y < maxY) {
-                    await handle.evaluate((originEl: HTMLElement, { dataUri, link, type, ratio }: any) => {
+                    // A. Main Frame Scan
+                    selectors.forEach((sel: string) => {
+                        document.querySelectorAll(sel).forEach(el => candidates.push(el as HTMLElement));
+                    });
 
-                        // --- 0. Helper: Deep Penetration & Diagnostics ---
-                        const resolveTarget = (el: HTMLElement) => {
-                            console.log('[DeepInject] Scanning element:', el.tagName, el.id, el.className);
-
-                            // 1. Iframe Penetration
-                            if (el.tagName === 'IFRAME') {
-                                try {
-                                    const doc = (el as HTMLIFrameElement).contentDocument;
-                                    if (doc && doc.body) {
-                                        console.log('[DeepInject] 🟢 Iframe penetrated!');
-                                        return doc.body;
-                                    }
-                                } catch (e) {
-                                    console.log('[DeepInject] 🔴 Iframe access blocked (CORS?)', e);
+                    // B. Global Iframe Scan
+                    const iframes = document.querySelectorAll('iframe');
+                    iframes.forEach(iframe => {
+                        try {
+                            const doc = iframe.contentDocument;
+                            if (doc) {
+                                selectors.forEach((sel: string) => {
+                                    doc.querySelectorAll(sel).forEach(el => candidates.push(el as HTMLElement));
+                                });
+                                // Also add body if it looks like an ad frame
+                                if (iframe.id.includes('ad') || iframe.src.includes('naver.com')) {
+                                    candidates.push(doc.body);
                                 }
                             }
+                        } catch (e) { /* CORS blockage expected for non-same-origin */ }
+                    });
 
-                            // 2. Shadow DOM Penetration
-                            if (el.shadowRoot) {
-                                console.log('[DeepInject] 🟢 Shadow Root detected!');
-                                // Cannot inject directly into shadowRoot usually without a container, 
-                                // but we can try appending to it or finding a container inside.
-                                // For simplicity/safety, we return the ShadowRoot as a target-like object if possible, 
-                                // OR we assume we replace the HOST content if the shadow is "open".
-                                // Let's try to append to shadowRoot directly.
-                                return el.shadowRoot as unknown as HTMLElement;
-                            }
-
-                            return el;
-                        };
-
-                        // --- 1. Helper: Style Locking (Visual Force) ---
-                        const lockStyles = (target: HTMLElement) => {
-                            // Enforce visibility on the element itself
-                            if (target.style) {
-                                target.style.display = 'block';
-                                target.style.visibility = 'visible';
-                                target.style.opacity = '1';
-                            }
-
-                            // Propagate up ~3 levels
-                            let parent = target.parentElement;
-                            let limit = 3;
-                            while (parent && limit > 0) {
-                                parent.style.visibility = 'visible'; // Ensure parent isn't hiding us
-                                // parent.style.overflow = 'visible'; // Careful, might break layout, but try if aggressive
-                                limit--;
-                                parent = parent.parentElement;
-                            }
-                        };
-
-                        // --- 2. Helper: Build Ad Content ---
-                        const buildContent = () => {
-                            const a = document.createElement('a');
-                            a.href = link;
-                            a.target = '_blank';
-                            a.style.cssText = 'display: block !important; width: 100% !important; height: 100% !important; text-decoration: none !important; cursor: pointer !important;';
-                            const i = document.createElement('img');
-                            i.src = dataUri;
-                            const fit = type === 'gfa_feed' ? 'cover' : 'contain';
-                            i.style.cssText = `width: 100% !important; height: 100% !important; display: block !important; object-fit: ${fit} !important; opacity: 1 !important; visibility: visible !important;`;
-                            if (type === 'gfa_feed') i.style.borderRadius = '8px';
-                            a.appendChild(i);
-                            return a;
-                        };
-
-                        // --- EXECUTE ---
-                        const target = resolveTarget(originEl);
-                        lockStyles(target); // Ensure parents are visible
-
-                        // --- STRATEGY A: Mobile Main (Deep Guardian) ---
-                        if (type === 'mobile_main') {
-                            const containerId = 'admate_deep_safe_zone';
-
-                            // 1. Initial Injection
-                            // Clear target completely to be safe
-                            // Note: If target is ShadowRoot, innerHTML might not work directly on it in all browsers, 
-                            // but usually it does for "open" shadows or we use standard append.
-                            try {
-                                target.innerHTML = '';
-                            } catch (e) {
-                                // Fallback for ShadowRoot if innerHTML fails
-                                while (target.firstChild) { target.removeChild(target.firstChild); }
-                            }
-
-                            // Apply container styles
-                            if (target instanceof HTMLElement) {
-                                target.style.cssText = 'display: block !important; width: 100% !important; height: auto !important; min-height: 50px !important; opacity: 1 !important; visibility: visible !important; background: white !important;';
-                            }
-
-                            const zone = document.createElement('div');
-                            zone.id = containerId;
-                            zone.style.cssText = 'width: 100% !important; height: auto !important; z-index: 2147483647 !important; position: relative !important; background: white !important;';
-                            zone.appendChild(buildContent());
-                            target.appendChild(zone);
-
-                            // 2. Persistent Guardian (Interval)
-                            if (!(window as any)._admateDeepGuardian) {
-                                console.log('[DeepGuardian] Starting pulsing watchdog...');
-                                (window as any)._admateDeepGuardian = setInterval(() => {
-                                    // We need to re-resolve target in case the reference was lost? 
-                                    // Actually, if the entire node was removed, we might need a higher level observer.
-                                    // But for now, we assume the wrapper (iframe/host) stays.
-
-                                    // Check Zone Integrity
-                                    const currentZone = target.querySelector ? target.querySelector('#' + containerId) : null; // ShadowRoot has querySelector
-
-                                    if (!currentZone) {
-                                        console.log('[DeepGuardian] Zone lost! Re-injecting...');
-                                        try { target.innerHTML = ''; } catch (e) { while (target.firstChild) target.removeChild(target.firstChild); }
-
-                                        const newZone = document.createElement('div');
-                                        newZone.id = containerId;
-                                        newZone.style.cssText = 'width: 100% !important; height: auto !important; z-index: 2147483647 !important; position: relative !important; background: white !important;';
-                                        newZone.appendChild(buildContent());
-                                        target.appendChild(newZone);
-                                    } else {
-                                        // Anti-Tamper: Detect intruders (siblings)
-                                        // Note: ShadowRoot children or Body children
-                                        if (target.children && target.children.length > 1) {
-                                            Array.from(target.children).forEach((child: any) => {
-                                                if (child.id !== containerId) {
-                                                    console.log('[DeepGuardian] Removing intruder...');
-                                                    child.remove();
-                                                }
-                                            });
-                                        }
-                                        // Re-force Styles
-                                        lockStyles(target as HTMLElement);
-                                    }
-
-                                }, 100);
-                            }
-                            return true;
-
-                        } else if (type === 'gfa_feed') {
-                            // STRATEGY B: GFA Feed
-                            try { target.innerHTML = ''; } catch (e) { }
-                            target.appendChild(buildContent());
-                            return true;
-
-                        } else {
-                            // STRATEGY C: Standard
-                            try { target.innerHTML = ''; } catch (e) { }
-                            target.appendChild(buildContent());
-                            return true;
+                    // C. Shadow DOM Walker (Simple DFS)
+                    const walk = (node: Node) => {
+                        if (!node) return;
+                        if (node instanceof Element && node.shadowRoot) {
+                            selectors.forEach((sel: string) => {
+                                node.shadowRoot!.querySelectorAll(sel).forEach(el => candidates.push(el as HTMLElement));
+                            });
+                            node.shadowRoot.childNodes.forEach(child => walk(child)); // Continue walking inside shadow DOM
                         }
+                        node.childNodes.forEach(child => walk(child));
+                    };
+                    walk(document.body);
 
-                    }, { dataUri: base64Image, link: landingUrl, type: config.type, ratio: config.ratio });
+                    // Filter & Sort candidates (Prioritize "Safe Zone" wrappers if we created them previously)
+                    // Then prioritize by visibility or size
+                    return candidates.find(el => {
+                        const style = window.getComputedStyle(el);
+                        return style.display !== 'none' && style.visibility !== 'hidden' && el.offsetHeight > 10;
+                    });
+                };
+
+                // --- 2. Helper: Content Builder ---
+                const buildContent = () => {
+                    const a = document.createElement('a');
+                    a.href = link;
+                    a.target = '_blank';
+                    a.style.cssText = 'display: block !important; width: 100% !important; height: 100% !important; text-decoration: none !important; cursor: pointer !important;';
+                    const i = document.createElement('img');
+                    i.src = dataUri;
+                    const fit = type === 'gfa_feed' ? 'cover' : 'contain';
+                    i.style.cssText = `width: 100% !important; height: 100% !important; display: block !important; object-fit: ${fit} !important; opacity: 1 !important; visibility: visible !important;`;
+                    if (type === 'gfa_feed') i.style.borderRadius = '8px';
+                    a.appendChild(i);
+                    return a;
+                };
+
+                // --- 3. EXECUTE ---
+                const target = findTargetGlobally();
+
+                if (target) {
+                    console.log(LOG_PREFIX, 'Target found:', target.tagName, target.className);
+
+                    // A. Standard Injection (Internal)
+                    try {
+                        target.innerHTML = '';
+                        // Force styles on target
+                        target.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important;';
+                        target.appendChild(buildContent());
+                    } catch (e) { console.log(LOG_PREFIX, 'Injection blocked:', e); }
+
+                    // B. VISUAL BLANKET (Overlay) - The Nuclear Option
+                    // Only for Mobile Main where coordinates are stable
+                    if (type === 'mobile_main') {
+                        const rect = target.getBoundingClientRect();
+
+                        // Check if we already have a blanket
+                        if (!document.getElementById('admate_visual_blanket')) {
+                            const blanket = document.createElement('div');
+                            blanket.id = 'admate_visual_blanket';
+                            blanket.style.cssText = `
+                                position: absolute !important;
+                                top: ${rect.top + window.scrollY}px !important;
+                                left: ${rect.left + window.scrollX}px !important;
+                                width: ${rect.width}px !important;
+                                height: ${rect.height}px !important;
+                                z-index: 2147483647 !important;
+                                background: white !important;
+                                pointer-events: auto !important;
+                            `;
+                            blanket.appendChild(buildContent());
+                            document.body.appendChild(blanket);
+                            console.log(LOG_PREFIX, 'Visual Blanket deployed at', rect.top, rect.height);
+
+                            // Keep it aligned (Guardian)
+                            setInterval(() => {
+                                const t = findTargetGlobally(); // Re-find execution target to sync pos
+                                if (t) {
+                                    const r = t.getBoundingClientRect();
+                                    const b = document.getElementById('admate_visual_blanket');
+                                    if (b) {
+                                        b.style.top = (r.top + window.scrollY) + 'px';
+                                        b.style.left = (r.left + window.scrollX) + 'px';
+                                        b.style.width = r.width + 'px';
+                                        b.style.height = r.height + 'px';
+                                    }
+                                }
+                            }, 200);
+                        }
+                    }
                     return true;
+                } else {
+                    console.log(LOG_PREFIX, 'No target found globally.');
+
+                    // Fallback: If aggressive, try to inject a blind blanket at typical coordinates?
+                    // Skipping for now to avoid breaking UI.
+                    return false;
                 }
-                return false;
-            } catch (e) { return false; }
+
+            }, {
+                dataUri: base64Image,
+                link: landingUrl,
+                type: config.type,
+                selectors: config.selectors,
+                aggressive: config.aggressive
+            });
         };
 
-        // Execution Loop
-        const executeParams = { aggressive: config.aggressive };
+        // Execution
+        let injected = false;
 
-        // 1. Selector Scan
-        if (config.selectors && config.selectors.length > 0) {
-            for (const sel of config.selectors) {
-                if (injected) break;
-                try {
-                    const elements = await page.$$(sel);
-                    for (const el of elements) {
-                        if (await injectIntoHandle(el)) {
-                            injected = true;
-                            console.log(`Injected into ${sel}`);
-                            break;
-                        }
-                    }
-                } catch (e) { }
-            }
-        }
+        // Try Ultimate Injection
+        try {
+            injected = await executeUltimateInjection();
+        } catch (e) { console.error('Ultimate Injection Error:', e); }
 
-        // 2. Simple Retry (Optional)
-        if (config.aggressive && injected) {
-            await page.waitForTimeout(500);
-        }
-
-        // 3. Fallback Scan (Legacy)
-        if (!injected && config.fallback) {
-            console.log('Fallback scan...');
-            const divs = await page.$$('div');
-            const minY = config.minY !== undefined ? config.minY : 0;
-            const maxY = config.maxY !== undefined ? config.maxY : 9999;
-            for (const div of divs) {
-                if (injected) break;
-                try {
-                    const bbox = await div.boundingBox();
-                    if (bbox && bbox.y >= minY && bbox.y <= maxY && bbox.width > 300 && bbox.height > 50) {
-                        if (await injectIntoHandle(div)) {
-                            injected = true;
-                            console.log('Injected via fallback');
-                        }
-                    }
-                } catch (e) { }
-            }
+        // Fallback for non-main pages or failure
+        if (!injected && config.selectors) {
+            // ... (Keep existing simple fallback if needed, but Ultimate covers it)
         }
 
         // 4. Capture
