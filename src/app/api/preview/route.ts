@@ -187,6 +187,29 @@ export async function POST(req: Request) {
         });
         const page = await context.newPage();
 
+        // --- 1. NETWORK BLOCKING (SI Strategy) ---
+        // Block Naver Ad Scripts & Requests at Network Level
+        if (config.aggressive || config.acr) {
+            console.log('Activating Network Shield...');
+            await page.route('**/*', (route) => {
+                const url = route.request().url();
+                const blockedDomains = [
+                    'ad.naver.com',
+                    'gfa.naver.com',
+                    'ssl.pstatic.net/static/ad',
+                    'ssl.pstatic.net/tveta/libs', // Common Ad Libs
+                    'ad-cr.naver.com'
+                ];
+
+                if (blockedDomains.some(domain => url.includes(domain))) {
+                    console.log(`Blocked Ad Request: ${url}`);
+                    route.abort();
+                } else {
+                    route.continue();
+                }
+            });
+        }
+
         console.log(`Navigating to ${config.url}...`);
         await page.goto(config.url, { waitUntil: 'domcontentloaded', timeout: 60000 }); // 60s Timeout
 
@@ -288,26 +311,14 @@ export async function POST(req: Request) {
                         // --- ACR STRATEGY (Naver Main Special DA) ---
                         if (acr) {
                             // 1. Check if we already injected (Duplicate Prevention)
-                            // Look at next sibling
                             const nextEl = el.nextElementSibling;
                             if (nextEl && nextEl.id === 'admate_acr_safe_zone') {
-                                // Already Injected? Just update image if needed or do nothing.
                                 return;
                             }
 
-                            // 2. Hide Original (Wipe-out effectively)
-                            el.style.display = 'none';
-                            el.style.visibility = 'hidden';
-                            el.style.height = '0';
-                            el.style.minHeight = '0';
-                            el.style.margin = '0';
-                            el.style.padding = '0';
-                            // We do NOT remove it, so Naver scripts can keep writing to it in the background idly.
-
-                            // 3. Create AdMate Safe Zone
+                            // 2. Create AdMate Safe Zone
                             const safeZone = document.createElement('div');
-                            safeZone.id = 'admate_acr_safe_zone'; // Unique ID for our control
-                            // Force Layout
+                            safeZone.id = 'admate_acr_safe_zone';
                             safeZone.style.cssText = `
                                 display: block !important;
                                 width: 100% !important;
@@ -316,7 +327,7 @@ export async function POST(req: Request) {
                                 padding: 0 !important;
                                 background: #ffffff !important;
                                 position: relative !important;
-                                z-index: 2147483647 !important; /* Max Z-Index */
+                                z-index: 2147483647 !important;
                                 box-sizing: border-box !important;
                             `;
 
@@ -332,22 +343,54 @@ export async function POST(req: Request) {
                             anchor.appendChild(img);
                             safeZone.appendChild(anchor);
 
-                            // 4. Insert Sibling
-                            if (el.parentNode) {
-                                el.parentNode.insertBefore(safeZone, el.nextSibling);
+                            // 3. Insert Safe Zone & Hard Delete Original
+                            const parent = el.parentNode;
+                            if (parent) {
+                                parent.insertBefore(safeZone, el); // Insert BEFORE original
+                                el.remove(); // HARD DELETE
                             } else {
-                                // Fallback (shouldn't happen for valid element)
+                                // Fallback
                                 el.style.display = 'block';
                                 el.innerHTML = '';
                                 el.appendChild(safeZone);
                             }
 
-                            // 5. Anti-Tamper Observer (If Naver tries to remove our sibling)
-                            // We observe the PARENT
-                            /* 
-                            // Complex to implement inside evaluate cleanly without memory leaks, 
-                            // but reliance on sibling structure + hidden original is usually enough.
-                            */
+                            // 4. DOM LOCK (MutationObserver)
+                            // Watch for Naver trying to restore the ad or remove our zone
+                            if (parent) {
+                                const observer = new MutationObserver((mutations) => {
+                                    for (const mutation of mutations) {
+                                        // A. Did they remove our Safe Zone?
+                                        if (mutation.removedNodes) {
+                                            mutation.removedNodes.forEach((node: any) => {
+                                                if (node.id === 'admate_acr_safe_zone') {
+                                                    // Put it back!
+                                                    console.log('Restoring Safe Zone...');
+                                                    parent.appendChild(safeZone);
+                                                }
+                                            });
+                                        }
+                                        // B. Did they add a new Ad container?
+                                        if (mutation.addedNodes) {
+                                            mutation.addedNodes.forEach((node: any) => {
+                                                // Check for signs of Naver Ads
+                                                if (node.nodeType === 1 && (
+                                                    (node.className && typeof node.className === 'string' && (node.className.includes('SpecialDA') || node.className.includes('main_veta'))) ||
+                                                    (node.id && node.id.includes('veta_top'))
+                                                )) {
+                                                    console.log('Killing resurrected Naver Ad...');
+                                                    node.remove();
+                                                }
+                                            });
+                                        }
+                                    }
+                                });
+                                observer.observe(parent, { childList: true, subtree: false });
+                                // Keep observer references alive? Browser handles it if attached to DOM element?
+                                // Actually better to attach to window to avoid GC?
+                                // For now, this closure should hold while page is active.
+                                (window as any)._admateObserver = observer;
+                            }
 
                             return;
                         }
