@@ -287,64 +287,137 @@ export async function POST(req: Request) {
                 const maxY = config.maxY !== undefined ? config.maxY : 9999;
 
                 if (bbox.y >= minY && bbox.y < maxY) {
-                    await handle.evaluate((el: HTMLElement, { dataUri, link, type, ratio }: any) => {
+                    await handle.evaluate((originEl: HTMLElement, { dataUri, link, type, ratio }: any) => {
 
-                        // --- Helper: Build Ad Content ---
+                        // --- 0. Helper: Deep Penetration & Diagnostics ---
+                        const resolveTarget = (el: HTMLElement) => {
+                            console.log('[DeepInject] Scanning element:', el.tagName, el.id, el.className);
+
+                            // 1. Iframe Penetration
+                            if (el.tagName === 'IFRAME') {
+                                try {
+                                    const doc = (el as HTMLIFrameElement).contentDocument;
+                                    if (doc && doc.body) {
+                                        console.log('[DeepInject] 🟢 Iframe penetrated!');
+                                        return doc.body;
+                                    }
+                                } catch (e) {
+                                    console.log('[DeepInject] 🔴 Iframe access blocked (CORS?)', e);
+                                }
+                            }
+
+                            // 2. Shadow DOM Penetration
+                            if (el.shadowRoot) {
+                                console.log('[DeepInject] 🟢 Shadow Root detected!');
+                                // Cannot inject directly into shadowRoot usually without a container, 
+                                // but we can try appending to it or finding a container inside.
+                                // For simplicity/safety, we return the ShadowRoot as a target-like object if possible, 
+                                // OR we assume we replace the HOST content if the shadow is "open".
+                                // Let's try to append to shadowRoot directly.
+                                return el.shadowRoot as unknown as HTMLElement;
+                            }
+
+                            return el;
+                        };
+
+                        // --- 1. Helper: Style Locking (Visual Force) ---
+                        const lockStyles = (target: HTMLElement) => {
+                            // Enforce visibility on the element itself
+                            if (target.style) {
+                                target.style.display = 'block';
+                                target.style.visibility = 'visible';
+                                target.style.opacity = '1';
+                            }
+
+                            // Propagate up ~3 levels
+                            let parent = target.parentElement;
+                            let limit = 3;
+                            while (parent && limit > 0) {
+                                parent.style.visibility = 'visible'; // Ensure parent isn't hiding us
+                                // parent.style.overflow = 'visible'; // Careful, might break layout, but try if aggressive
+                                limit--;
+                                parent = parent.parentElement;
+                            }
+                        };
+
+                        // --- 2. Helper: Build Ad Content ---
                         const buildContent = () => {
                             const a = document.createElement('a');
                             a.href = link;
                             a.target = '_blank';
-                            a.style.cssText = 'display: block !important; width: 100% !important; text-decoration: none !important;';
+                            a.style.cssText = 'display: block !important; width: 100% !important; height: 100% !important; text-decoration: none !important; cursor: pointer !important;';
                             const i = document.createElement('img');
                             i.src = dataUri;
-                            // Use 'contain' to respect aspect ratio, or 'cover' if native
                             const fit = type === 'gfa_feed' ? 'cover' : 'contain';
-                            i.style.cssText = `width: 100% !important; height: auto !important; display: block !important; object-fit: ${fit} !important;`;
+                            i.style.cssText = `width: 100% !important; height: 100% !important; display: block !important; object-fit: ${fit} !important; opacity: 1 !important; visibility: visible !important;`;
                             if (type === 'gfa_feed') i.style.borderRadius = '8px';
                             a.appendChild(i);
                             return a;
                         };
 
-                        // --- STRATEGY A: Mobile Main (Simple Interval Guardian) ---
+                        // --- EXECUTE ---
+                        const target = resolveTarget(originEl);
+                        lockStyles(target); // Ensure parents are visible
+
+                        // --- STRATEGY A: Mobile Main (Deep Guardian) ---
                         if (type === 'mobile_main') {
-                            const containerId = 'admate_safe_zone';
+                            const containerId = 'admate_deep_safe_zone';
 
-                            // 1. Initial Wipe & Inject
-                            if (!document.getElementById(containerId)) {
-                                el.innerHTML = '';
-                                el.style.cssText = 'display: block !important; height: auto !important; min-height: 50px !important; visibility: visible !important;';
-
-                                const zone = document.createElement('div');
-                                zone.id = containerId;
-                                zone.style.cssText = 'width: 100% !important; z-index: 5000 !important; background: white !important;';
-                                zone.appendChild(buildContent());
-                                el.appendChild(zone);
+                            // 1. Initial Injection
+                            // Clear target completely to be safe
+                            // Note: If target is ShadowRoot, innerHTML might not work directly on it in all browsers, 
+                            // but usually it does for "open" shadows or we use standard append.
+                            try {
+                                target.innerHTML = '';
+                            } catch (e) {
+                                // Fallback for ShadowRoot if innerHTML fails
+                                while (target.firstChild) { target.removeChild(target.firstChild); }
                             }
 
-                            // 2. Simple Interval Guardian (Pulse every 100ms)
-                            if (!(window as any)._admateInterval) {
-                                console.log('[Guardian] Starting Interval Pulse...');
-                                (window as any)._admateInterval = setInterval(() => {
-                                    const zone = document.getElementById(containerId);
+                            // Apply container styles
+                            if (target instanceof HTMLElement) {
+                                target.style.cssText = 'display: block !important; width: 100% !important; height: auto !important; min-height: 50px !important; opacity: 1 !important; visibility: visible !important; background: white !important;';
+                            }
 
-                                    // Case 1: Zone Missing (Naver overwrote parent)
-                                    if (!zone) {
-                                        console.log('[Guardian] Zone missing. Re-injecting...');
-                                        el.innerHTML = ''; // Clear Naver content
+                            const zone = document.createElement('div');
+                            zone.id = containerId;
+                            zone.style.cssText = 'width: 100% !important; height: auto !important; z-index: 2147483647 !important; position: relative !important; background: white !important;';
+                            zone.appendChild(buildContent());
+                            target.appendChild(zone);
+
+                            // 2. Persistent Guardian (Interval)
+                            if (!(window as any)._admateDeepGuardian) {
+                                console.log('[DeepGuardian] Starting pulsing watchdog...');
+                                (window as any)._admateDeepGuardian = setInterval(() => {
+                                    // We need to re-resolve target in case the reference was lost? 
+                                    // Actually, if the entire node was removed, we might need a higher level observer.
+                                    // But for now, we assume the wrapper (iframe/host) stays.
+
+                                    // Check Zone Integrity
+                                    const currentZone = target.querySelector ? target.querySelector('#' + containerId) : null; // ShadowRoot has querySelector
+
+                                    if (!currentZone) {
+                                        console.log('[DeepGuardian] Zone lost! Re-injecting...');
+                                        try { target.innerHTML = ''; } catch (e) { while (target.firstChild) target.removeChild(target.firstChild); }
+
                                         const newZone = document.createElement('div');
                                         newZone.id = containerId;
-                                        newZone.style.cssText = 'width: 100% !important; z-index: 5000 !important; background: white !important;';
+                                        newZone.style.cssText = 'width: 100% !important; height: auto !important; z-index: 2147483647 !important; position: relative !important; background: white !important;';
                                         newZone.appendChild(buildContent());
-                                        el.appendChild(newZone);
-                                    }
-
-                                    // Case 2: Zone Exists but has neighbors (Naver appended content)
-                                    if (zone && zone.parentElement && zone.parentElement.children.length > 1) {
-                                        Array.from(zone.parentElement.children).forEach(child => {
-                                            if (child.id !== containerId) {
-                                                child.remove(); // Kill intruders
-                                            }
-                                        });
+                                        target.appendChild(newZone);
+                                    } else {
+                                        // Anti-Tamper: Detect intruders (siblings)
+                                        // Note: ShadowRoot children or Body children
+                                        if (target.children && target.children.length > 1) {
+                                            Array.from(target.children).forEach((child: any) => {
+                                                if (child.id !== containerId) {
+                                                    console.log('[DeepGuardian] Removing intruder...');
+                                                    child.remove();
+                                                }
+                                            });
+                                        }
+                                        // Re-force Styles
+                                        lockStyles(target as HTMLElement);
                                     }
 
                                 }, 100);
@@ -352,16 +425,15 @@ export async function POST(req: Request) {
                             return true;
 
                         } else if (type === 'gfa_feed') {
-                            // --- STRATEGY B: GFA Feed (Native Style) ---
-                            // Simple replace, no guardian needed usually
-                            el.innerHTML = '';
-                            el.appendChild(buildContent());
+                            // STRATEGY B: GFA Feed
+                            try { target.innerHTML = ''; } catch (e) { }
+                            target.appendChild(buildContent());
                             return true;
 
                         } else {
-                            // --- STRATEGY C: Standard (Simple Overwrite) ---
-                            el.innerHTML = '';
-                            el.appendChild(buildContent());
+                            // STRATEGY C: Standard
+                            try { target.innerHTML = ''; } catch (e) { }
+                            target.appendChild(buildContent());
                             return true;
                         }
 
