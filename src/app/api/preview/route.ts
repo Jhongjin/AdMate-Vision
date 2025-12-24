@@ -88,19 +88,20 @@ export async function POST(req: Request) {
             },
             'smart_channel_sports': {
                 url: 'https://m.sports.naver.com',
-                selectors: ['.mfc_modadbasic_ad_item', 'div[class*="SportsHeader"] + div'],
+                selectors: ['.mfc_modadbasic_ad_item', '.SportsHeader + .ad', 'div[class*="ad_item"]', 'div[class*="banner"]'],
                 fallback: true,
                 ratio: 'contain',
                 minY: 0,
-                maxY: 300
+                maxY: 500 // Increased range
             },
             'smart_channel_ent': {
                 url: 'https://m.entertain.naver.com',
-                selectors: ['.template_body_ad', '.mfc_modadbasic_ad_item'],
+                selectors: ['.template_body_ad', '.mfc_modadbasic_ad_item', 'div[class*="ad_item"]'],
                 fallback: true,
                 ratio: 'contain',
                 minY: 0,
-                maxY: 300
+                maxY: 600,
+                scrollFirst: true // Force content load for background
             },
             'branding_da_sub': {
                 url: 'https://m.entertain.naver.com', // Reliable topic board
@@ -122,7 +123,7 @@ export async function POST(req: Request) {
             },
             'gfa_feed_sports': {
                 url: 'https://m.sports.naver.com',
-                selectors: ['.template_feed_only_ad', '.mfc_tmplfeedad_template_body_ad', '.ad_item'],
+                selectors: ['.template_feed_only_ad', '.mfc_tmplfeedad_template_body_ad', '.ad_item', 'div[class*="ad_item"]'],
                 fallback: true,
                 scrollFirst: true,
                 minY: 500,
@@ -131,7 +132,7 @@ export async function POST(req: Request) {
             },
             'gfa_feed_ent': {
                 url: 'https://m.entertain.naver.com',
-                selectors: ['.mfc_tmplfeedmixed_template_body_ad', '.template_body_ad', '.ad_item'],
+                selectors: ['.mfc_tmplfeedmixed_template_body_ad', '.template_body_ad', '.ad_item', 'div[class*="ad_item"]'],
                 fallback: true,
                 scrollFirst: true,
                 minY: 500,
@@ -237,96 +238,113 @@ export async function POST(req: Request) {
 
         // Helper Injection Function
         const injectIntoHandle = async (handle: any) => {
-            const bbox = await handle.boundingBox();
-            if (!bbox) return false;
+            if (!handle) return false;
+            try {
+                const bbox = await handle.boundingBox();
+                // Critical Fix: bbox can be null if element is detached or hidden
+                if (!bbox) return false;
 
-            // Check Y range - Relaxed for sub-pages?
-            // Main page ads usually 100-500. Smart Channel might be top (0-200).
-            const minY = 0; // Smart Channel is at very top
-            const maxY = 600;
+                // Check Y range - Relaxed for sub-pages?
+                const minY = config.minY !== undefined ? config.minY : 0;
+                const maxY = config.maxY !== undefined ? config.maxY : 9999; // Default to open
 
-            if (bbox.y >= minY && bbox.y < maxY && bbox.height > 20) {
-                await handle.evaluate((el: HTMLElement, { dataUri, link, ratio, native }: any) => {
-                    el.innerHTML = '';
+                if (bbox.y >= minY && bbox.y < maxY && bbox.height > 20) {
+                    await handle.evaluate((el: HTMLElement, { dataUri, link, ratio, native }: any) => {
+                        el.innerHTML = '';
+                        // ... internal logic unchanged ...
+                        // Create Anchor Wrapper
+                        const anchor = document.createElement('a');
+                        anchor.href = link;
+                        anchor.target = '_blank';
+                        anchor.style.display = 'block';
+                        anchor.style.width = '100%';
+                        anchor.style.textDecoration = 'none';
+                        anchor.style.boxSizing = 'border-box';
 
-                    // Create Anchor Wrapper
-                    const anchor = document.createElement('a');
-                    anchor.href = link;
-                    anchor.target = '_blank';
-                    anchor.style.display = 'block';
-                    anchor.style.width = '100%';
-                    anchor.style.textDecoration = 'none';
-                    anchor.style.boxSizing = 'border-box';
+                        // Create Image
+                        const newImg = document.createElement('img');
+                        newImg.src = dataUri;
+                        newImg.style.width = '100%';
+                        newImg.style.display = 'block';
+                        newImg.style.objectFit = 'contain';
 
-                    // Create Image
-                    const newImg = document.createElement('img');
-                    newImg.src = dataUri;
-                    newImg.style.width = '100%';
-                    newImg.style.display = 'block';
-                    newImg.style.objectFit = 'contain';
+                        if (ratio === 'contain') {
+                            newImg.style.height = 'auto';
+                        } else {
+                            newImg.style.height = '100%';
+                        }
 
-                    if (ratio === 'contain') {
-                        newImg.style.height = 'auto'; // Let width drive height
-                    } else {
-                        newImg.style.height = '100%';
-                    }
+                        anchor.appendChild(newImg);
+                        el.appendChild(anchor);
 
-                    anchor.appendChild(newImg);
-                    el.appendChild(anchor);
+                        // Reset Container
+                        el.style.padding = '0';
+                        el.style.margin = '0';
+                        el.style.background = 'transparent';
+                        el.style.border = 'none';
 
-                    // Reset Container
-                    el.style.padding = '0';
-                    el.style.margin = '0';
-                    el.style.background = 'transparent';
-                    el.style.border = 'none';
-
-                    if (native) {
-                        // Native Feed Ad Styling Enforcement
-                        el.style.marginBottom = '10px';
-                        el.style.marginTop = '10px';
-                        newImg.style.borderRadius = '8px';
-                        newImg.style.overflow = 'hidden';
-                    } else {
-                        el.style.height = 'auto';
-                        el.style.minHeight = '50px';
-                    }
-                }, { dataUri: base64Image, link: landingUrl, native: config.native, ratio: config.ratio });
-                return true;
+                        if (native) {
+                            el.style.marginBottom = '10px';
+                            el.style.marginTop = '10px';
+                            newImg.style.borderRadius = '8px';
+                            newImg.style.overflow = 'hidden';
+                        } else {
+                            el.style.height = 'auto';
+                            el.style.minHeight = '50px';
+                        }
+                    }, { dataUri: base64Image, link: landingUrl, native: config.native, ratio: config.ratio });
+                    return true;
+                }
+                return false;
+            } catch (e) {
+                console.warn('Error checking bounding box:', e);
+                return false;
             }
-            return false;
         };
 
         // Execute selectors
         for (const sel of config.selectors) {
             if (injected) break;
-            const elements = await page.$$(sel);
-            for (const el of elements) {
-                if (await injectIntoHandle(el)) {
-                    injected = true;
-                    console.log(`Injected into selector: ${sel}`);
-                    break;
+            try {
+                // Wait for selector? No, too slow. Just check existence.
+                const elements = await page.$$(sel);
+                for (const el of elements) {
+                    if (await injectIntoHandle(el)) {
+                        injected = true;
+                        console.log(`Injected into selector: ${sel}`);
+                        break;
+                    }
                 }
+            } catch (e) {
+                console.warn(`Selector check failed for ${sel}`, e);
             }
         }
 
         // Fallback Scan (if enabled)
         if (!injected && config.fallback) {
             console.log('Using fallback div scan...');
-            const divs = await page.$$('div');
-            // Determine fallback constraints
-            const minY = config.minY !== undefined ? config.minY : 0;
-            const maxY = config.maxY !== undefined ? config.maxY : 600;
+            try {
+                const divs = await page.$$('div');
+                const minY = config.minY !== undefined ? config.minY : 0;
+                const maxY = config.maxY !== undefined ? config.maxY : 9999;
 
-            for (const div of divs) {
-                if (injected) break;
-                const bbox = await div.boundingBox();
-
-                if (bbox && bbox.y >= minY && bbox.y < maxY && bbox.height > 40 && bbox.width > 300) {
-                    if (await injectIntoHandle(div)) {
-                        injected = true;
-                        console.log('Injected into fallback div');
+                for (const div of divs) {
+                    if (injected) break;
+                    // Try-Catch inside loop to prevent one bad element from crashing everything
+                    try {
+                        const bbox = await div.boundingBox(); // Can throw
+                        if (bbox && bbox.y >= minY && bbox.y < maxY && bbox.height > 40 && bbox.width > 300) {
+                            if (await injectIntoHandle(div)) {
+                                injected = true;
+                                console.log('Injected into fallback div');
+                            }
+                        }
+                    } catch (e) {
+                        // Ignore single element failure
                     }
                 }
+            } catch (e) {
+                console.warn('Fallback scan failed', e);
             }
         }
 
