@@ -207,6 +207,8 @@ export default function Home() {
                         <option value="gfa_feed_news">네이버 GFA 뉴스 피드</option>
                         <option value="gfa_feed_sports">네이버 GFA 스포츠 피드</option>
                         <option value="gfa_feed_ent">네이버 GFA 연예 피드</option>
+                        <option value="guarantee_showcase">네이버 보장형 쇼케이스</option>
+                        <option value="guarantee_splash">네이버 지도 스플래시</option>
                     </select>
                 </div>
 

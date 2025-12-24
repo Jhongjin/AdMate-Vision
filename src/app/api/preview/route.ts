@@ -137,6 +137,20 @@ export async function POST(req: Request) {
                 minY: 800,
                 maxY: 5000,
                 native: true
+            },
+            'guarantee_showcase': {
+                url: 'https://m.entertain.naver.com', // Showcase often appears here
+                selectors: [],
+                fallback: false,
+                overlay: true,
+                overlayColor: '#000000'
+            },
+            'guarantee_splash': {
+                url: 'https://m.map.naver.com', // Map Splash
+                selectors: [],
+                fallback: false,
+                overlay: true,
+                overlayColor: '#ffffff'
             }
         };
 
@@ -165,13 +179,62 @@ export async function POST(req: Request) {
         await page.goto(config.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
         // Scroll interaction (Universal)
-        await page.mouse.wheel(0, 300);
-        await page.waitForTimeout(500);
-        await page.evaluate(() => window.scrollTo(0, 0));
+        if (!config.overlay) {
+            if (config.scrollFirst) {
+                await page.mouse.wheel(0, 800);
+                await page.waitForTimeout(800);
+            } else {
+                await page.mouse.wheel(0, 300);
+                await page.waitForTimeout(500);
+                await page.evaluate(() => window.scrollTo(0, 0));
+            }
+        }
         await page.waitForTimeout(1000);
 
         // 3. Inject
         let injected = false;
+
+        // Special handling for Overlay Placements (Splash/Showcase)
+        if (config.overlay) {
+            console.log('Injecting Full-screen Overlay...');
+            await page.evaluate(({ dataUri, link, color }: any) => {
+                const overlay = document.createElement('div');
+                overlay.style.position = 'fixed';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.width = '100vw'; // Viewport Width
+                overlay.style.height = '100vh'; // Viewport Height
+                overlay.style.backgroundColor = color;
+                overlay.style.zIndex = '99990'; // High Z-index, but below Status Bar (99999)
+                overlay.style.display = 'flex';
+                overlay.style.justifyContent = 'center';
+                overlay.style.alignItems = 'center';
+
+                // Clickable Anchor
+                const anchor = document.createElement('a');
+                anchor.href = link;
+                anchor.target = '_blank';
+                anchor.style.display = 'block';
+                anchor.style.width = '100%';
+                anchor.style.height = '100%';
+                anchor.style.textDecoration = 'none';
+
+                const img = document.createElement('img');
+                img.src = dataUri;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'cover'; // Splash usually covers
+
+                anchor.appendChild(img);
+                overlay.appendChild(anchor);
+                document.body.appendChild(overlay);
+
+                // Hide existing scroll
+                document.body.style.overflow = 'hidden';
+
+            }, { dataUri: base64Image, link: landingUrl, color: config.overlayColor });
+            injected = true;
+        }
 
         // Helper Injection Function
         const injectIntoHandle = async (handle: any) => {
