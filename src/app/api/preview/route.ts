@@ -54,7 +54,7 @@ async function getBrowser() {
 
 export async function POST(req: Request) {
     try {
-        const { imageUrl, landingUrl, media } = await req.json();
+        const { imageUrl, landingUrl, media, placement } = await req.json();
 
         if (!imageUrl || !landingUrl) {
             return NextResponse.json({ error: 'Missing imageUrl or landingUrl' }, { status: 400 });
@@ -116,7 +116,7 @@ export async function POST(req: Request) {
                 selectors: ['._feed_ad', '.r_ad', '.ad_item', '.section_ad', 'div[class*="ad"]', 'div[class*="banner"]'],
                 fallback: true,
                 scrollFirst: true,
-                minY: 600,
+                minY: 500,
                 maxY: 5000,
                 native: true
             },
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
                 selectors: ['.template_feed_only_ad', '.mfc_tmplfeedad_template_body_ad', '.ad_item'],
                 fallback: true,
                 scrollFirst: true,
-                minY: 800,
+                minY: 500,
                 maxY: 5000,
                 native: true
             },
@@ -134,7 +134,7 @@ export async function POST(req: Request) {
                 selectors: ['.mfc_tmplfeedmixed_template_body_ad', '.template_body_ad', '.ad_item'],
                 fallback: true,
                 scrollFirst: true,
-                minY: 800,
+                minY: 500,
                 maxY: 5000,
                 native: true
             },
@@ -154,9 +154,8 @@ export async function POST(req: Request) {
             }
         };
 
-        const currentPlacement = PLACEMENT_CONFIG[media] || PLACEMENT_CONFIG['mobile_main']; // 'media' reused as placement or add new param
-        // Note: User asked for 'placement' param. Let's use it.
-        const placementParam = (req as any).placement || media || 'mobile_main'; // Backward compat
+        // Determine actual placement
+        const placementParam = placement || media || 'mobile_main';
         const config = PLACEMENT_CONFIG[placementParam] || PLACEMENT_CONFIG['mobile_main'];
 
         console.log(`Target Placement: ${placementParam}, URL: ${config.url}`);
