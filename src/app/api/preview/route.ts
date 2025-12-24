@@ -187,20 +187,20 @@ export async function POST(req: Request) {
         });
         const page = await context.newPage();
 
-        // --- 1. NETWORK BLOCKING (SI Strategy) ---
-        // Block Naver Ad Scripts & Requests at Network Level
+        // --- 1. NETWORK BLOCKING (Surgical Strategy) ---
+        // Block ONLY explicit Naver Ad domains. Do NOT block pstatic (images/css).
         if (config.aggressive || config.acr) {
-            console.log('Activating Network Shield...');
+            console.log('Activating Surgical Network Shield...');
             await page.route('**/*', (route) => {
                 const url = route.request().url();
                 const blockedDomains = [
                     'ad.naver.com',
                     'gfa.naver.com',
-                    'ssl.pstatic.net/static/ad',
-                    'ssl.pstatic.net/tveta/libs', // Common Ad Libs
-                    'ad-cr.naver.com'
+                    'ad-cr.naver.com',
+                    'ams.naver.com' // Another common ad server
                 ];
 
+                // Do NOT block ssl.pstatic.net as it serves main page CSS/Images
                 if (blockedDomains.some(domain => url.includes(domain))) {
                     console.log(`Blocked Ad Request: ${url}`);
                     route.abort();
@@ -211,13 +211,15 @@ export async function POST(req: Request) {
         }
 
         console.log(`Navigating to ${config.url}...`);
-        await page.goto(config.url, { waitUntil: 'domcontentloaded', timeout: 60000 }); // 60s Timeout
+        await page.goto(config.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        // Wait for Body Check
+        // Wait for Critical Content (Header/Body) to ensure page is loaded
         try {
             await page.waitForSelector('body', { timeout: 10000 });
+            // Wait for GNB or Header to prevent blank screenshot
+            await page.waitForSelector('#header, .header, .gnb_banner', { timeout: 5000 }).catch(() => console.log('Header wait skipped'));
         } catch (e) {
-            console.warn('Body wait timeout, proceeding...');
+            console.warn('Page load wait warning:', e);
         }
 
         // Scroll interaction (Universal)
@@ -319,6 +321,7 @@ export async function POST(req: Request) {
                             // 2. Create AdMate Safe Zone
                             const safeZone = document.createElement('div');
                             safeZone.id = 'admate_acr_safe_zone';
+                            // Adjusted Z-Index: Lower than system bar (99999), Higher than content
                             safeZone.style.cssText = `
                                 display: block !important;
                                 width: 100% !important;
@@ -327,7 +330,7 @@ export async function POST(req: Request) {
                                 padding: 0 !important;
                                 background: #ffffff !important;
                                 position: relative !important;
-                                z-index: 2147483647 !important;
+                                z-index: 5000 !important; 
                                 box-sizing: border-box !important;
                             `;
 
@@ -343,52 +346,33 @@ export async function POST(req: Request) {
                             anchor.appendChild(img);
                             safeZone.appendChild(anchor);
 
-                            // 3. Insert Safe Zone & Hard Delete Original
-                            const parent = el.parentNode;
-                            if (parent) {
-                                parent.insertBefore(safeZone, el); // Insert BEFORE original
-                                el.remove(); // HARD DELETE
-                            } else {
-                                // Fallback
-                                el.style.display = 'block';
-                                el.innerHTML = '';
-                                el.appendChild(safeZone);
-                            }
+                            // 3. Soft Replace (Clear Content + Append)
+                            el.innerHTML = '';
+                            el.appendChild(safeZone);
 
-                            // 4. DOM LOCK (MutationObserver)
-                            // Watch for Naver trying to restore the ad or remove our zone
-                            if (parent) {
+                            // Force Parent Styles
+                            el.style.cssText = 'display: block !important; height: auto !important; min-height: 50px !important; padding: 0 !important; margin: 0 !important; visibility: visible !important;';
+
+                            // 4. DOM LOCK (MutationObserver) 
+                            if (el) {
                                 const observer = new MutationObserver((mutations) => {
                                     for (const mutation of mutations) {
-                                        // A. Did they remove our Safe Zone?
-                                        if (mutation.removedNodes) {
-                                            mutation.removedNodes.forEach((node: any) => {
-                                                if (node.id === 'admate_acr_safe_zone') {
-                                                    // Put it back!
-                                                    console.log('Restoring Safe Zone...');
-                                                    parent.appendChild(safeZone);
-                                                }
-                                            });
-                                        }
-                                        // B. Did they add a new Ad container?
                                         if (mutation.addedNodes) {
                                             mutation.addedNodes.forEach((node: any) => {
-                                                // Check for signs of Naver Ads
-                                                if (node.nodeType === 1 && (
-                                                    (node.className && typeof node.className === 'string' && (node.className.includes('SpecialDA') || node.className.includes('main_veta'))) ||
-                                                    (node.id && node.id.includes('veta_top'))
-                                                )) {
-                                                    console.log('Killing resurrected Naver Ad...');
+                                                if (node.id !== 'admate_acr_safe_zone') {
+                                                    console.log('Removing intrusive ad script/element...');
                                                     node.remove();
                                                 }
                                             });
                                         }
                                     }
+                                    if (!document.getElementById('admate_acr_safe_zone')) {
+                                        console.log('Restoring Safe Zone...');
+                                        el.innerHTML = '';
+                                        el.appendChild(safeZone);
+                                    }
                                 });
-                                observer.observe(parent, { childList: true, subtree: false });
-                                // Keep observer references alive? Browser handles it if attached to DOM element?
-                                // Actually better to attach to window to avoid GC?
-                                // For now, this closure should hold while page is active.
+                                observer.observe(el, { childList: true, subtree: false });
                                 (window as any)._admateObserver = observer;
                             }
 
