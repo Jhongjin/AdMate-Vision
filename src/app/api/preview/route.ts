@@ -356,7 +356,7 @@ export async function POST(req: Request) {
                         target.appendChild(buildContent());
                     } catch (e) { console.log(LOG_PREFIX, 'Injection blocked:', e); }
 
-                    // B. VISUAL BLANKET (Overlay) - The Nuclear Option
+                    // B. VISUAL BLANKET (HLO / Virtual Sticker) - The Nuclear Option
                     // Only for Mobile Main where coordinates are stable
                     if (type === 'mobile_main') {
                         const rect = target.getBoundingClientRect();
@@ -365,34 +365,40 @@ export async function POST(req: Request) {
                         if (!document.getElementById('admate_visual_blanket')) {
                             const blanket = document.createElement('div');
                             blanket.id = 'admate_visual_blanket';
+                            // HLO: Fixed Position (Virtual Sticker)
                             blanket.style.cssText = `
-                                position: absolute !important;
-                                top: ${rect.top + window.scrollY}px !important;
-                                left: ${rect.left + window.scrollX}px !important;
+                                position: fixed !important;
+                                top: ${rect.top}px !important;
+                                left: ${rect.left}px !important;
                                 width: ${rect.width}px !important;
                                 height: ${rect.height}px !important;
                                 z-index: 2147483647 !important;
                                 background: white !important;
                                 pointer-events: auto !important;
+                                transition: none !important; /* No lag */
                             `;
                             blanket.appendChild(buildContent());
                             document.body.appendChild(blanket);
-                            console.log(LOG_PREFIX, 'Visual Blanket deployed at', rect.top, rect.height);
+                            console.log(LOG_PREFIX, 'HLO deployed at', rect.top, rect.height);
 
-                            // Keep it aligned (Guardian)
+                            // High Frequency Polling (50ms)
                             setInterval(() => {
                                 const t = findTargetGlobally(); // Re-find execution target to sync pos
                                 if (t) {
                                     const r = t.getBoundingClientRect();
                                     const b = document.getElementById('admate_visual_blanket');
                                     if (b) {
-                                        b.style.top = (r.top + window.scrollY) + 'px';
-                                        b.style.left = (r.left + window.scrollX) + 'px';
+                                        // Sync coordinates directly for Fixed Position
+                                        b.style.top = r.top + 'px';
+                                        b.style.left = r.left + 'px';
                                         b.style.width = r.width + 'px';
                                         b.style.height = r.height + 'px';
+
+                                        // Safety: If off-screen or zero size, maybe hide? 
+                                        // But keeping it ensures aggressive visibility.
                                     }
                                 }
-                            }, 200);
+                            }, 50);
                         }
                     }
                     return true;
