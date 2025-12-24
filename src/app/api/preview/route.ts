@@ -176,19 +176,38 @@ export async function POST(req: Request) {
         const page = await context.newPage();
 
         console.log(`Navigating to ${config.url}...`);
-        await page.goto(config.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.goto(config.url, { waitUntil: 'domcontentloaded', timeout: 60000 }); // 60s Timeout
+
+        // Wait for Body Check
+        try {
+            await page.waitForSelector('body', { timeout: 10000 });
+        } catch (e) {
+            console.warn('Body wait timeout, proceeding...');
+        }
 
         // Scroll interaction (Universal)
         if (!config.overlay) {
+            // Force Scroll for Lazy Load
+            await page.mouse.wheel(0, 1000);
+            await page.waitForTimeout(1500);
+
             if (config.scrollFirst) {
                 await page.mouse.wheel(0, 800);
-                await page.waitForTimeout(800);
+                await page.waitForTimeout(2000); // Explicit longer wait for feed
             } else {
                 await page.mouse.wheel(0, 300);
                 await page.waitForTimeout(500);
                 await page.evaluate(() => window.scrollTo(0, 0));
             }
         }
+
+        // Explicit Wait for Content (Best Effort)
+        if (!config.overlay) {
+            try {
+                await page.waitForSelector('div', { state: 'attached', timeout: 5000 }).catch(() => { });
+            } catch (e) { }
+        }
+
         await page.waitForTimeout(1000);
 
         // 3. Inject
@@ -302,21 +321,26 @@ export async function POST(req: Request) {
             }
         };
 
-        // Execute selectors
-        for (const sel of config.selectors) {
-            if (injected) break;
-            try {
-                // Wait for selector? No, too slow. Just check existence.
-                const elements = await page.$$(sel);
-                for (const el of elements) {
-                    if (await injectIntoHandle(el)) {
-                        injected = true;
-                        console.log(`Injected into selector: ${sel}`);
-                        break;
+        // Execute selectors with robust error handling
+        if (!injected && config.selectors.length > 0) {
+            for (const sel of config.selectors) {
+                if (injected) break;
+                try {
+                    const elements = await page.$$(sel);
+                    for (const el of elements) {
+                        try {
+                            if (await injectIntoHandle(el)) {
+                                injected = true;
+                                console.log(`Injected into selector: ${sel}`);
+                                break;
+                            }
+                        } catch (innerE) {
+                            // Ignore specific element error
+                        }
                     }
+                } catch (e) {
+                    console.warn(`Selector check failed for ${sel}`, e);
                 }
-            } catch (e) {
-                console.warn(`Selector check failed for ${sel}`, e);
             }
         }
 

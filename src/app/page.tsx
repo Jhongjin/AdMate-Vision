@@ -106,175 +106,201 @@ export default function Home() {
     };
 
     return (
-        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' }}>
-            <h1 style={{ textAlign: 'center', marginBottom: '2rem', color: '#333' }}>AdMate Vision Generator</h1>
+        <div style={{ display: 'flex', flexDirection: 'row', height: '100vh', width: '100vw', fontFamily: 'sans-serif', overflow: 'hidden' }}>
 
-            <form onSubmit={handleSubmit} style={{
+            {/* 1. Sidebar (Fixed Width) */}
+            <div style={{
+                width: '360px',
+                flexShrink: 0,
+                backgroundColor: '#fff',
+                borderRight: '1px solid #e1e1e1',
+                padding: '2rem',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '1.5rem',
-                padding: '2rem',
-                border: '1px solid #e1e1e1',
-                borderRadius: '12px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                backgroundColor: '#fff'
+                overflowY: 'auto',
+                boxShadow: '2px 0 10px rgba(0,0,0,0.02)',
+                zIndex: 10
             }}>
-                {/* Upload Area */}
-                <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Ad Image</label>
-                    <div
-                        onDragEnter={handleDrag}
-                        onDragLeave={handleDrag}
-                        onDragOver={handleDrag}
-                        onDrop={handleDrop}
-                        style={{
-                            border: dragActive ? '2px dashed #03c75a' : '2px dashed #ccc',
-                            borderRadius: '8px',
-                            padding: '2rem',
-                            textAlign: 'center',
-                            backgroundColor: dragActive ? '#f0fdf4' : '#fafafa',
-                            transition: 'all 0.2s',
-                            position: 'relative'
-                        }}
-                    >
-                        {uploading ? (
-                            <p style={{ color: '#03c75a', fontWeight: 'bold' }}>Image Uploading...</p>
-                        ) : (
-                            <>
-                                <p style={{ margin: 0, color: '#666' }}>Drag & drop an image here, or</p>
-                                <input
-                                    type="file"
-                                    id="file-upload"
-                                    style={{ display: 'none' }}
-                                    onChange={handleChange}
-                                    accept="image/*"
-                                />
-                                <label
-                                    htmlFor="file-upload"
-                                    style={{
-                                        display: 'inline-block',
-                                        marginTop: '0.5rem',
-                                        padding: '0.5rem 1rem',
-                                        backgroundColor: '#fff',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '0.9rem'
-                                    }}
-                                >
-                                    Select File
-                                </label>
-                            </>
-                        )}
+                <h1 style={{ fontSize: '1.5rem', fontWeight: '800', margin: '0 0 1rem 0', color: '#111' }}>AdMate Vision</h1>
+
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {/* Upload Area */}
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem', color: '#333' }}>Ad Image Source</label>
+                        <div
+                            onDragEnter={handleDrag}
+                            onDragLeave={handleDrag}
+                            onDragOver={handleDrag}
+                            onDrop={handleDrop}
+                            style={{
+                                border: dragActive ? '2px dashed #03c75a' : '2px dashed #e1e1e1',
+                                borderRadius: '8px',
+                                padding: '1.5rem',
+                                textAlign: 'center',
+                                backgroundColor: dragActive ? '#f0fdf4' : '#fafafa',
+                                transition: 'all 0.2s',
+                            }}
+                        >
+                            {uploading ? (
+                                <p style={{ color: '#03c75a', fontWeight: 'bold' }}>Uploading...</p>
+                            ) : (
+                                <>
+                                    <p style={{ margin: 0, color: '#888', fontSize: '0.85rem' }}>Drag & drop or</p>
+                                    <input
+                                        type="file"
+                                        id="file-upload"
+                                        style={{ display: 'none' }}
+                                        onChange={handleChange}
+                                        accept="image/*"
+                                    />
+                                    <label
+                                        htmlFor="file-upload"
+                                        style={{
+                                            display: 'inline-block',
+                                            marginTop: '0.5rem',
+                                            padding: '0.4rem 0.8rem',
+                                            backgroundColor: '#fff',
+                                            border: '1px solid #ccc',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            fontSize: '0.8rem',
+                                            color: '#333'
+                                        }}
+                                    >
+                                        Browse
+                                    </label>
+                                </>
+                            )}
+                        </div>
+
+                        <div style={{ marginTop: '0.8rem' }}>
+                            <input
+                                type="text"
+                                value={imageUrl}
+                                onChange={(e) => setImageUrl(e.target.value)}
+                                style={{ width: '100%', padding: '0.6rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem' }}
+                                placeholder="http://..."
+                                required
+                            />
+                        </div>
                     </div>
 
-                    <div style={{ marginTop: '1rem' }}>
-                        <label style={{ fontSize: '0.9rem', color: '#666' }}>Or paste direct URL:</label>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem' }}>Landing URL</label>
                         <input
                             type="text"
-                            value={imageUrl}
-                            onChange={(e) => setImageUrl(e.target.value)}
-                            style={{ width: '100%', padding: '0.75rem', marginTop: '0.25rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                            placeholder="https://..."
+                            value={landingUrl}
+                            onChange={(e) => setLandingUrl(e.target.value)}
+                            style={{ width: '100%', padding: '0.6rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem' }}
                             required
                         />
                     </div>
-                </div>
 
-                <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Landing URL</label>
-                    <input
-                        type="text"
-                        value={landingUrl}
-                        onChange={(e) => setLandingUrl(e.target.value)}
-                        style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                        required
-                    />
-                </div>
-
-                {/* Placement Select */}
-                <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Placement</label>
-                    <select
-                        name="media"
-                        style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                    >
-                        <option value="mobile_main">네이버 메인 (스페셜 DA)</option>
-                        <option value="smart_channel_news">네이버 뉴스 (스마트 채널)</option>
-                        <option value="smart_channel_sports">네이버 스포츠 (스마트 채널)</option>
-                        <option value="smart_channel_ent">네이버 연예 (스마트 채널)</option>
-                        <option value="branding_da_sub">네이버 주제판 (브랜딩 DA)</option>
-                        <option value="gfa_feed_news">네이버 GFA 뉴스 피드</option>
-                        <option value="gfa_feed_sports">네이버 GFA 스포츠 피드</option>
-                        <option value="gfa_feed_ent">네이버 GFA 연예 피드</option>
-                        <option value="guarantee_showcase">네이버 보장형 쇼케이스</option>
-                        <option value="guarantee_splash">네이버 지도 스플래시</option>
-                    </select>
-                </div>
-
-                <button
-                    type="submit"
-                    disabled={loading || uploading}
-                    style={{
-                        marginTop: '1rem',
-                        padding: '1rem',
-                        fontSize: '1.1rem',
-                        backgroundColor: (loading || uploading) ? '#ccc' : '#03c75a',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: (loading || uploading) ? 'not-allowed' : 'pointer',
-                        fontWeight: 'bold',
-                        transition: 'background-color 0.2s'
-                    }}
-                >
-                    {loading ? 'Generating Preview...' : 'Generate Naver Mobile Preview'}
-                </button>
-
-                {error && (
-                    <div style={{ padding: '1rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '4px', textAlign: 'center' }}>
-                        {error}
+                    {/* Placement Select */}
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem' }}>Placement Target</label>
+                        <select
+                            name="media"
+                            style={{ width: '100%', padding: '0.7rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.95rem', backgroundColor: '#fff' }}
+                        >
+                            <option value="mobile_main">네이버 메인 (스페셜 DA)</option>
+                            <option value="smart_channel_news">네이버 뉴스 (스마트 채널)</option>
+                            <option value="smart_channel_sports">네이버 스포츠 (스마트 채널)</option>
+                            <option value="smart_channel_ent">네이버 연예 (스마트 채널)</option>
+                            <option value="branding_da_sub">네이버 주제판 (브랜딩 DA)</option>
+                            <option value="gfa_feed_news">네이버 GFA 뉴스 피드</option>
+                            <option value="gfa_feed_sports">네이버 GFA 스포츠 피드</option>
+                            <option value="gfa_feed_ent">네이버 GFA 연예 피드</option>
+                            <option value="guarantee_showcase">네이버 보장형 쇼케이스</option>
+                            <option value="guarantee_splash">네이버 지도 스플래시</option>
+                        </select>
                     </div>
-                )}
-            </form>
 
-            {resultImage && (
-                <div style={{ marginTop: '3rem', textAlign: 'center', animation: 'fadeIn 0.5s' }}>
-                    <h2 style={{ marginBottom: '1.5rem', color: '#333' }}>Preview Result</h2>
+                    <button
+                        type="submit"
+                        disabled={loading || uploading}
+                        style={{
+                            marginTop: '0.5rem',
+                            padding: '1rem',
+                            fontSize: '1rem',
+                            backgroundColor: (loading || uploading) ? '#ccc' : '#03c75a',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: (loading || uploading) ? 'not-allowed' : 'pointer',
+                            fontWeight: 'bold',
+                            boxShadow: '0 2px 4px rgba(3, 199, 90, 0.2)'
+                        }}
+                    >
+                        {loading ? 'Generating...' : 'Generate Preview'}
+                    </button>
 
-                    <div style={{ display: 'inline-block', position: 'relative' }}>
-                        {/* Clickable Wrapper */}
-                        <a href={landingUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', cursor: 'pointer', textDecoration: 'none' }}>
-                            <div style={{
-                                border: '1px solid #e1e1e1',
-                                padding: '0',
-                                borderRadius: '0',
-                                boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-                                backgroundColor: '#fff',
-                                display: 'inline-block',
-                                width: 'fit-content',
-                                overflow: 'hidden'
-                            }}>
+                    {error && (
+                        <div style={{ padding: '0.8rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '6px', fontSize: '0.85rem' }}>
+                            {error}
+                        </div>
+                    )}
+                </form>
+            </div>
+
+            {/* 2. Main Viewer (Flex 1, Centered) */}
+            <div style={{
+                flex: 1,
+                backgroundColor: '#f3f4f6', // Light gray background
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                position: 'relative',
+                overflow: 'hidden'
+            }}>
+                {resultImage ? (
+                    <div style={{
+                        animation: 'fadeIn 0.5s',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        maxHeight: '95vh',
+                        maxWidth: '95vw'
+                    }}>
+                        <div style={{
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                            borderRadius: '2px', // Slight rounding or sharp for precise feel
+                            overflow: 'hidden',
+                            lineHeight: 0
+                        }}>
+                            <a href={landingUrl} target="_blank" rel="noopener noreferrer">
                                 <img
                                     src={resultImage}
                                     alt="Generated Preview"
-                                    style={{ maxWidth: '100%', height: 'auto', maxHeight: '80vh', display: 'block' }}
+                                    style={{
+                                        maxHeight: '85vh',
+                                        maxWidth: '100%',
+                                        objectFit: 'contain',
+                                        display: 'block'
+                                    }}
                                 />
-                            </div>
-                        </a>
-                        <p style={{ marginTop: '1.5rem', color: '#666', fontSize: '0.95rem' }}>
-                            ※ 결과물 이미지를 클릭하면 설정한 랜딩 페이지로 이동합니다
+                            </a>
+                        </div>
+                        <p style={{ marginTop: '1rem', color: '#6b7280', fontSize: '0.9rem', fontWeight: '500' }}>
+                            Click image to test landing page
                         </p>
                     </div>
-                </div>
-            )}
+                ) : (
+                    <div style={{ textAlign: 'center', color: '#9ca3af' }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📱</div>
+                        <p style={{ fontSize: '1.1rem' }}>Select options and click Generate</p>
+                    </div>
+                )}
+            </div>
 
             <style jsx global>{`
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: scale(0.98); }
+                    to { opacity: 1; transform: scale(1); }
+                }
+                body { margin: 0; padding: 0; }
+            `}</style>
         </div>
     );
 }
